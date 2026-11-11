@@ -271,6 +271,7 @@ Public Sub ConnectUser_Prepare(ByVal UserIndex As Integer, ByVal name As String)
     On Error GoTo Prepare_ConnectUser_Err
     Call ResetHooClientCapabilities(UserIndex)
     With UserList(UserIndex)
+        Call ResetAutoCombat(UserIndex)
         .flags.Escondido = 0
         Call ClearNpcRef(.flags.TargetNPC)
         .flags.TargetNpcTipo = e_NPCType.Comun
@@ -1751,6 +1752,7 @@ Sub UserDie(ByVal UserIndex As Integer)
     Dim i  As Long
     Dim aN As Integer
     With UserList(UserIndex)
+        Call StopAutoCombat(UserIndex, e_AutoCombatStopReason.e_AutoCombatStopUserDied)
         .Counters.Mimetismo = 0
         .flags.Mimetizado = e_EstadoMimetismo.Desactivado
         Call RefreshCharStatus(UserIndex)
@@ -2189,6 +2191,7 @@ Sub WarpUserChar(ByVal UserIndex As Integer, ByVal Map As Integer, ByVal x As In
         OldY = .pos.y
         Call EraseUserChar(UserIndex, True, FX)
         If OldMap <> Map Then
+            Call StopAutoCombat(UserIndex, e_AutoCombatStopReason.e_AutoCombatStopMapChanged)
             Call WriteChangeMap(UserIndex, Map)
             If MapInfo(OldMap).Seguro = 1 And MapInfo(Map).Seguro = 0 And .Stats.ELV < 42 Then
                 ' Msg573=Estás saliendo de una zona segura, recuerda que aquí corres riesgo de ser atacado.
@@ -2919,6 +2922,9 @@ End Function
 Public Function ModifyHealth(ByVal UserIndex As Integer, ByVal amount As Long, Optional ByVal MinValue = 0) As Boolean
     With UserList(UserIndex)
         ModifyHealth = False
+        If Amount < 0 Then
+            Call StopAutoCombat(UserIndex, e_AutoCombatStopReason.e_AutoCombatStopDamageReceived)
+        End If
         .Stats.MinHp = .Stats.MinHp + amount
         If .Stats.MinHp > .Stats.MaxHp Then
             .Stats.MinHp = .Stats.MaxHp
@@ -3458,4 +3464,116 @@ Public Function RaceToString(ByVal raza As e_Raza) As String
         Case e_Raza.Orco:   RaceToString = "ORCO"
         Case Else:          RaceToString = ""
     End Select
+End Function
+
+Public Function TryStartMeditation(ByVal UserIndex As Integer) As Boolean
+    On Error GoTo TryStartMeditation_Err
+
+    With UserList(UserIndex)
+        If .flags.Meditando Then
+            TryStartMeditation = True
+            Exit Function
+        End If
+
+        'Si ya tiene el mana completo, no lo dejamos meditar.
+        If .Stats.MinMAN = .Stats.MaxMAN Then Exit Function
+
+        'Las clases NO MAGICAS no meditan...
+        If .clase = e_Class.Hunter Or .clase = e_Class.Trabajador Or .clase = e_Class.Warrior Or .clase = e_Class.Pirat Or .clase = e_Class.Thief Then Exit Function
+
+        If .flags.Muerto = 1 Then
+            'Msg77=¡¡Estás muerto!!.
+            Call WriteLocaleMsg(UserIndex, MSG_MUERTO, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
+            Exit Function
+        End If
+
+        If .flags.Montado = 1 Then
+            ' Msg756=No podes meditar estando montado.
+            Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_MEDITAR_ESTANDO_MONTADO, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+            Exit Function
+        End If
+
+        .flags.Meditando = True
+        .Counters.TimerMeditar = 0
+        .Counters.TiempoInicioMeditar = 0
+        .Char.FX = GetMeditationFX(UserIndex)
+
+        Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, .Char.FX, .pos.x, .pos.y))
+    End With
+
+    TryStartMeditation = True
+    Exit Function
+
+TryStartMeditation_Err:
+    Call TraceError(Err.Number, Err.Description, "UserMod.TryStartMeditation", Erl)
+End Function
+
+Public Sub StopMeditation(ByVal UserIndex As Integer)
+    On Error GoTo StopMeditation_Err
+
+    With UserList(UserIndex)
+        If Not .flags.Meditando Then Exit Sub
+        .flags.Meditando = False
+        .Char.FX = 0
+        Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, 0, .pos.x, .pos.y))
+    End With
+
+    Exit Sub
+
+StopMeditation_Err:
+    Call TraceError(Err.Number, Err.Description, "UserMod.StopMeditation", Erl)
+End Sub
+
+Private Function GetMeditationFX(ByVal UserIndex As Integer) As Integer
+    On Error GoTo GetMeditationFX_Err
+
+    Dim inventorySlot As Integer
+    Dim objIndex      As Integer
+
+    With UserList(UserIndex)
+        For inventorySlot = 1 To UBound(.invent.Object)
+            objIndex = .invent.Object(inventorySlot).objIndex
+            If objIndex > 0 Then
+                If ObjData(objIndex).OBJType = otDonator And ObjData(objIndex).Subtipo = 4 And .invent.Object(inventorySlot).Equipped Then
+                    GetMeditationFX = ObjData(objIndex).HechizoIndex
+                    Exit Function
+                End If
+            End If
+        Next inventorySlot
+
+        Dim isCriminal As Boolean
+        isCriminal = (.faccion.Status = e_Facciones.Caos _
+                   Or .faccion.Status = e_Facciones.Criminal _
+                   Or .faccion.Status = e_Facciones.concilio)
+
+        Select Case .Stats.ELV
+            Case 1 To 12
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel1to12, MeditationLevel1to12)
+            Case 13 To 17
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel13to17, MeditationLevel13to17)
+            Case 18 To 24
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel18to24, MeditationLevel18to24)
+            Case 25 To 28
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel25to28, MeditationLevel25to28)
+            Case 29 To 32
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel29to32, MeditationLevel29to32)
+            Case 33 To 36
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel33to36, MeditationLevel33to36)
+            Case 37 To 39
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel37to39, MeditationLevel37to39)
+            Case 40 To 42
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel40to42, MeditationLevel40to42)
+            Case 43 To 44
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel43to44, MeditationLevel43to44)
+            Case 45 To 46
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel45to46, MeditationLevel45to46)
+            Case Else
+                GetMeditationFX = MeditationLevelMax
+        End Select
+    End With
+
+    Exit Function
+
+GetMeditationFX_Err:
+    Call TraceError(Err.Number, Err.Description, "UserMod.GetMeditationFX", Erl)
 End Function

@@ -1494,3 +1494,15 @@ Public Const MSG_SE_HA_DESCONECTADO As Integer = 2038
 Public Const MSG_CLAN_HA_ENVIADO_SOLICITUD_PARA_UNIRSE_AL_CLAN As Integer = 2039
 Public Const MSG_COMERCIO_FINALIZADO_EXITO As Integer = 2290
 Public Const MSG_NO_PODES_CONSUMIR_MAS_CARTAS As Integer = 2292
+
+' Auto combate (repeticion automatica de la ultima accion contra NPC)
+Public Const MSG_AUTOCOMBAT_ARMED As Integer = 2297
+Public Const MSG_AUTOCOMBAT_CAPTURED As Integer = 2298
+Public Const MSG_AUTOCOMBAT_OFF As Integer = 2299
+Public Const MSG_AUTOCOMBAT_TARGET_DIED As Integer = 2300
+Public Const MSG_AUTOCOMBAT_OUT_OF_RANGE As Integer = 2301
+Public Const MSG_AUTOCOMBAT_OTHER_TARGET As Integer = 2302
+Public Const MSG_AUTOCOMBAT_NO_ARROWS As Integer = 2303
+Public Const MSG_AUTOCOMBAT_DAMAGE_RECEIVED As Integer = 2304
+Public Const MSG_AUTOCOMBAT_MEDITATION_CUT As Integer = 2305
+Public Const MSG_AUTOCOMBAT_CANT_MEDITATE As Integer = 2306
