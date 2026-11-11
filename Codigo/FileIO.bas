@@ -2949,6 +2949,12 @@ Sub LoadGuildsConfig()
     GuildsIni.Initialize DatPath & "Clanes.dat"
     
     Dim i As Long
+    
+    'Cantidad máxima de niveles de clan (debe leerse antes que todo lo demás)
+    MAX_LEVEL_GUILD = CByte(val(GuildsIni.GetValue("GUILDLEVELS", "MaxGuildLevel", "7")))
+    ReDim ExpLevelUpGuild(1 To MAX_LEVEL_GUILD)
+    ReDim MembersByLevel(1 To MAX_LEVEL_GUILD)
+    ReDim PriceAcceptMemberGuild(1 To MAX_LEVEL_GUILD)
 
     'Experiencia de niveles de clan
     For i = 1 To MAX_LEVEL_GUILD
