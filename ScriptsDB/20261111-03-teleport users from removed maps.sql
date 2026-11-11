@@ -1,0 +1,1 @@
+UPDATE user SET pos_map = 1, pos_x = 50, pos_y = 50 WHERE pos_map IN (584, 595, 596, 597, 598);
