@@ -5,6 +5,7 @@ Option Explicit
 Public Function test_suite_gm_support_history() As Boolean
     On Error GoTo test_suite_gm_support_history_Err
     Call UnitTesting.RunTest("GM support history retains the newest replies", test_retains_newest_replies())
+    Call UnitTesting.RunTest("Persisted GM support history is bounded", test_persisted_history_is_limited())
     Call UnitTesting.RunTest("GM support history preserves pending ordinary messages", test_preserves_ordinary_messages())
     Call UnitTesting.RunTest("GM support history extraction excludes ordinary messages", test_extracts_only_replies())
     Call UnitTesting.RunTest("Character saves do not overwrite GM reply history", test_character_save_preserves_replies())
@@ -28,6 +29,23 @@ Private Function test_retains_newest_replies() As Boolean
         InStr(1, limited, "reply-2" & vbNewLine, vbBinaryCompare) = 0 And _
         InStr(1, limited, "reply-3" & vbNewLine, vbBinaryCompare) > 0 And _
         InStr(1, limited, "reply-22" & vbNewLine, vbBinaryCompare) > 0
+End Function
+
+Private Function test_persisted_history_is_limited() As Boolean
+    Dim source As String
+    Dim merged As String
+    Dim storedReply As String
+    Dim i As Long
+    source = "ordinary notification" & vbNewLine
+    For i = 1 To UserMod.GM_REPLY_HISTORY_LIMIT
+        source = source & UserMod.GM_REPLY_MESSAGE_PREFIX & "GM" & Chr$(172) & "reply-" & CStr(i) & vbNewLine
+    Next i
+    storedReply = UserMod.GM_REPLY_MESSAGE_PREFIX & "GM" & Chr$(172) & "reply-21" & vbNewLine
+    merged = UserMod.MergeGmReplyHistory(source, storedReply)
+    test_persisted_history_is_limited = _
+        InStr(1, merged, "ordinary notification" & vbNewLine, vbBinaryCompare) > 0 And _
+        InStr(1, merged, "reply-1" & vbNewLine, vbBinaryCompare) = 0 And _
+        InStr(1, merged, "reply-21" & vbNewLine, vbBinaryCompare) > 0
 End Function
 
 Private Function test_preserves_ordinary_messages() As Boolean

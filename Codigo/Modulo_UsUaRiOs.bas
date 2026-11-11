@@ -84,6 +84,15 @@ LimitGmReplyHistory_Err:
     LimitGmReplyHistory = MessageInfo
 End Function
 
+Public Function MergeGmReplyHistory(ByVal MessageInfo As String, ByVal StoredReply As String) As String
+    On Error GoTo MergeGmReplyHistory_Err
+    MergeGmReplyHistory = LimitGmReplyHistory(MessageInfo & StoredReply)
+    Exit Function
+MergeGmReplyHistory_Err:
+    Call TraceError(Err.Number, Err.Description, "UserMod.MergeGmReplyHistory", Erl)
+    MergeGmReplyHistory = MessageInfo
+End Function
+
 Public Function ExtractGmReplyHistory(ByVal MessageInfo As String) As String
     On Error GoTo ExtractGmReplyHistory_Err
     If LenB(MessageInfo) = 0 Then Exit Function

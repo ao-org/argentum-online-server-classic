@@ -846,31 +846,36 @@ End Function
 Public Function SetMessageInfoDatabase(ByVal name As String, ByVal Message As String) As Boolean
     On Error GoTo SetMessageInfoDatabase_Err
 
-    ' GM replies must be durable before the command reports success.  In particular,
-    ' an asynchronous write can lose the reply when the target reconnects immediately.
-    Dim Command  As New ADODB.Command
-    Dim Affected As Long
+    Dim CurrentMessageInfo As String
+    Dim RS                 As ADODB.Recordset
 
-    Command.ActiveConnection = Connection
-    ' The deployed SQLite ODBC driver does not expose SQLite's newer concat()
-    ' function.  The || operator works on every supported SQLite version.
-    Command.CommandText = "update user set message_info = coalesce(message_info, '') || ? where upper(name) = ?;"
-    Command.CommandType = adCmdText
-    Command.Prepared = True
-    Command.Parameters.Append CreateParameter(Message, adParamInput)
-    Command.Parameters.Append CreateParameter(UCase$(name), adParamInput)
-
-    Call Command.Execute(Affected, , adExecuteNoRecords)
-    ' Some ODBC providers report -1 when the statement succeeds without a
-    ' precise affected-row count.  Only zero means that no character matched.
-    SetMessageInfoDatabase = (Affected <> 0)
-
-    If Not SetMessageInfoDatabase Then
-        Call LogDatabaseError("SetMessageInfoDatabase did not find user: " & name)
+    ' Read and rewrite synchronously so the persisted column is bounded before
+    ' reporting success. LimitGmReplyHistory preserves ordinary pending messages.
+    Set RS = Query("select message_info from user where upper(name) = ?;", UCase$(name))
+    If RS Is Nothing Then
+        Call LogDatabaseError("SetMessageInfoDatabase could not read user: " & name)
+        Exit Function
     End If
+
+    If RS.EOF Then
+        Call RS.Close
+        Call LogDatabaseError("SetMessageInfoDatabase did not find user: " & name)
+        Exit Function
+    End If
+
+    CurrentMessageInfo = CStr(SanitizeNullValue(RS!message_info, vbNullString))
+    Call RS.Close
+    Set RS = Nothing
+
+    SetMessageInfoDatabase = ReplaceMessageInfoDatabase(name, UserMod.MergeGmReplyHistory(CurrentMessageInfo, Message))
     Exit Function
 
 SetMessageInfoDatabase_Err:
+    If Not RS Is Nothing Then
+        If RS.State <> adStateClosed Then
+            Call RS.Close
+        End If
+    End If
     Call LogDatabaseError("Database Error: " & Err.Number & " - " & Err.Description & " - SetMessageInfoDatabase. UserName: " & name)
 End Function
 
