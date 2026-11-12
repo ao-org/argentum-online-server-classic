@@ -607,22 +607,19 @@ ContinueOrbitSearch:
 End Function
 
 Private Sub NpcMarkTargetUnreachable(ByVal NpcIndex As Integer)
-    With NpcList(NpcIndex)
-        If Not .pathFindingInfo.TargetUnreachable Then
-            .pathFindingInfo.TargetUnreachable = True
-            .pathFindingInfo.PreviousAttackable = .Attackable
-            .Attackable = 0
-        End If
-    End With
+    On Error GoTo NpcMarkTargetUnreachable_Err
+    NpcList(NpcIndex).pathFindingInfo.TargetUnreachable = True
+    Exit Sub
+NpcMarkTargetUnreachable_Err:
+    Call TraceError(Err.Number, Err.Description, "Npcs.NpcMarkTargetUnreachable", Erl)
 End Sub
 
 Private Sub NpcClearTargetUnreachable(ByVal NpcIndex As Integer)
-    With NpcList(NpcIndex)
-        If .pathFindingInfo.TargetUnreachable Then
-            .Attackable = .pathFindingInfo.PreviousAttackable
-            .pathFindingInfo.TargetUnreachable = False
-        End If
-    End With
+    On Error GoTo NpcClearTargetUnreachable_Err
+    NpcList(NpcIndex).pathFindingInfo.TargetUnreachable = False
+    Exit Sub
+NpcClearTargetUnreachable_Err:
+    Call TraceError(Err.Number, Err.Description, "Npcs.NpcClearTargetUnreachable", Erl)
 End Sub
 
 Private Function NpcLanzaSpellInmovilizado(ByVal NpcIndex As Integer, ByVal tIndex As Integer) As Boolean
@@ -808,7 +805,8 @@ Private Function TryGuardAttackHostileNpc(ByVal NpcIndex As Integer) As Boolean
 TryGuardAttackHostileNpc_Err:
     Call TraceError(Err.Number, Err.Description, "AI.TryGuardAttackHostileNpc", Erl)
 End Function
-Public Sub AI_GuardiaPersigueNpc(ByVal NpcIndex As Integer)
+
+Public Sub AI_GuardiaPersigueNpc(ByVal NpcIndex As Integer)
     On Error GoTo ErrorHandler
     Dim TargetPos As t_WorldPos
     With NpcList(NpcIndex)
