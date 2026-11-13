@@ -7477,36 +7477,77 @@ End Sub
 
 Public Sub HandleQuestAccept(ByVal UserIndex As Integer)
     On Error GoTo HandleQuestAccept_Err
-    '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-    'Maneja el evento de aceptar una quest.
-    'Last modified: 31/01/2010 by Amraphen
-    '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-    Dim NpcIndex  As Integer
-    Dim QuestSlot As Byte
-    Dim Indice    As Byte
-    Dim tmpIndex  As Integer
+    Dim NpcIndex   As Integer
+    Dim QuestSlot  As Byte
+    Dim Indice     As Byte
+    Dim tmpIndex   As Integer
+    Dim tmpQuest   As t_Quest
+    Dim OpenByObj  As Boolean
+    Dim validCount As Integer
+    Dim k          As Integer
+
     Indice = reader.ReadInt8
-    If Not IsValidNpcRef(UserList(UserIndex).flags.TargetNPC) And UserList(UserIndex).flags.QuestOpenByObj = False Then Exit Sub
-    NpcIndex = UserList(UserIndex).flags.TargetNPC.ArrayIndex
-    Dim tmpQuest As t_Quest
-    'npc or item quest
-    If NpcIndex > 0 Then
-        'npc handled quest
-        tmpQuest = QuestList(NpcList(NpcIndex).QuestNumber(Indice))
-        tmpIndex = NpcList(NpcIndex).QuestNumber(Indice)
-    Else
-        'item handled quest
+
+    OpenByObj = UserList(UserIndex).flags.QuestOpenByObj
+    UserList(UserIndex).flags.QuestOpenByObj = False
+
+    If OpenByObj Then
+        'Quest por objeto: se ignora el TargetNPC
+        NpcIndex = 0
         tmpIndex = UserList(UserIndex).flags.QuestNumber
-        tmpQuest = QuestList(tmpIndex)
+
+        'El objeto tiene que seguir en el slot y corresponder a esta quest
+        Dim itemSlot As Byte
+        itemSlot = UserList(UserIndex).flags.QuestItemSlot
+
+        If itemSlot < 1 Or itemSlot > MAX_INVENTORY_SLOTS Then Exit Sub
+
+        With UserList(UserIndex).invent.Object(itemSlot)
+            If .ObjIndex <= 0 Or .Amount <= 0 Then Exit Sub
+            If ObjData(.ObjIndex).OBJType <> e_OBJType.OtQuest Then Exit Sub
+            If ObjData(.ObjIndex).QuestId <> tmpIndex Then Exit Sub
+        End With
+    Else
+        'Quest por NPC
+        If Not IsValidNpcRef(UserList(UserIndex).flags.TargetNPC) Then Exit Sub
+        NpcIndex = UserList(UserIndex).flags.TargetNPC.ArrayIndex
+        If NpcIndex <= 0 Then Exit Sub
+
+        'Indice es la posicion en la lista filtrada que se envio al cliente
+        tmpIndex = 0
+        validCount = 0
+        For k = 1 To NpcList(NpcIndex).NumQuest
+            If IsQuestIndexValid(NpcList(NpcIndex).QuestNumber(k)) Then
+                validCount = validCount + 1
+                If validCount = Indice Then
+                    tmpIndex = NpcList(NpcIndex).QuestNumber(k)
+                    Exit For
+                End If
+            End If
+        Next k
+
+        If tmpIndex = 0 Then Exit Sub
     End If
+
+    If tmpIndex < LBound(QuestList) Or tmpIndex > UBound(QuestList) Then
+        Call TraceError(0, "QuestNumber invalido: " & tmpIndex, "Protocol.HandleQuestAccept", 0)
+        Exit Sub
+    End If
+
+    tmpQuest = QuestList(tmpIndex)
+
     If Not ModQuest.CanUserAcceptQuest(UserIndex, NpcIndex, tmpIndex, tmpQuest) Then
         Exit Sub
     End If
+
     QuestSlot = FreeQuestSlot(UserIndex)
     If QuestSlot = 0 Then
-        Call WriteLocaleChatOverHead(UserIndex, MSG_DEBES_COMPLETAR_LAS_MISIONES_EN_CURSO_PARA_PODER_ACEPTAR_MAS_MISIONES, vbNullString, NpcList(NpcIndex).Char.charindex, vbYellow)  ' Msg1417=Debes completar las misiones en curso para poder aceptar más misiones.
+        If NpcIndex > 0 Then
+            Call WriteLocaleChatOverHead(UserIndex, MSG_DEBES_COMPLETAR_LAS_MISIONES_EN_CURSO_PARA_PODER_ACEPTAR_MAS_MISIONES, vbNullString, NpcList(NpcIndex).Char.charindex, vbYellow)  ' Msg1417=Debes completar las misiones en curso para poder aceptar más misiones.
+        End If
         Exit Sub
     End If
+
     'Agregamos la quest.
     With UserList(UserIndex).QuestStats.Quests(QuestSlot)
         .QuestIndex = tmpIndex
