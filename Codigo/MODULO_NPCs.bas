@@ -2120,7 +2120,7 @@ Public Function UserCanAttackNpc(ByVal UserIndex As Integer, ByVal NpcIndex As I
         Exit Function
     End If
     'Es una criatura atacable?
-    If NpcList(NpcIndex).Attackable = 0 Or NpcList(NpcIndex).pathFindingInfo.TargetUnreachable Then
+    If NpcList(NpcIndex).Attackable = 0 Then
         UserCanAttackNpc.Result = eInmuneNpc
         Exit Function
     End If
