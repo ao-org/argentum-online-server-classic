@@ -3037,6 +3037,9 @@ Public Sub WriteNpcQuestListSend(ByVal UserIndex As Integer, ByVal NpcIndex As I
     If UserIndex < 1 Or UserIndex > LastUser Then Exit Sub
     If NpcIndex < 1 Then Exit Sub
 
+    ' The panel is now opened by an NPC, so the object-quest mode must be off
+    UserList(UserIndex).flags.QuestOpenByObj = False
+
     ' ===== Build valid quest list =====
     validQuestCount = 0
 
@@ -3187,7 +3190,7 @@ WriteNpcQuestListSend_Err:
     Call TraceError(Err.Number, Err.Description, "Protocol_Writes.WriteNpcQuestListSend", Erl)
 End Sub
 
-Private Function IsQuestIndexValid(ByVal QuestIndex As Integer) As Boolean
+Public Function IsQuestIndexValid(ByVal questIndex As Integer) As Boolean
     On Error GoTo ErrHandler
 
     If QuestIndex < LBound(QuestList) Then Exit Function
