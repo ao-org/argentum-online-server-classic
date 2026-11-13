@@ -1727,6 +1727,139 @@ Private Function HayEspacioMascotas(ByVal UserIndex As Integer) As Boolean
     HayEspacioMascotas = (FreeMascotaIndex(UserIndex) > 0)
 End Function
 
+''
+' Busca un slot libre para invocaciones (MAXMASCOTAS + 1 .. MAX_SLOTS_MASCOTAS).
+' Un slot de invocación sin NPC válido se considera libre (las invocaciones no se guardan).
+'
+' @return Índice del slot libre, o -1 si no hay.
+'
+Public Function FreeInvocacionIndex(ByVal UserIndex As Integer) As Integer
+    On Error GoTo FreeInvocacionIndex_Err
+
+    Dim slotIndex As Integer
+
+    For slotIndex = MAXMASCOTAS + 1 To MAX_SLOTS_MASCOTAS
+        If Not IsValidNpcRef(UserList(UserIndex).MascotasIndex(slotIndex)) Then
+            FreeInvocacionIndex = slotIndex
+            Exit Function
+        End If
+    Next slotIndex
+
+    FreeInvocacionIndex = -1
+    Exit Function
+
+FreeInvocacionIndex_Err:
+    Call TraceError(Err.Number, Err.Description, "Trabajo.FreeInvocacionIndex", Erl)
+End Function
+
+''
+' Cuenta las mascotas domadas registradas (activas + guardadas).
+'
+Public Function ContarDomadas(ByVal UserIndex As Integer) As Integer
+    On Error GoTo ContarDomadas_Err
+
+    Dim slotIndex As Integer
+    Dim cantidad  As Integer
+
+    For slotIndex = 1 To MAXMASCOTAS
+        If UserList(UserIndex).MascotasType(slotIndex) > 0 Then
+            cantidad = cantidad + 1
+        End If
+    Next slotIndex
+
+    ContarDomadas = cantidad
+    Exit Function
+
+ContarDomadas_Err:
+    Call TraceError(Err.Number, Err.Description, "Trabajo.ContarDomadas", Erl)
+End Function
+
+''
+' Cuenta las criaturas activas en el mundo (domadas + invocadas).
+'
+Public Function ContarActivas(ByVal UserIndex As Integer) As Integer
+    On Error GoTo ContarActivas_Err
+
+    Dim slotIndex As Integer
+    Dim cantidad  As Integer
+
+    For slotIndex = 1 To MAX_SLOTS_MASCOTAS
+        If IsValidNpcRef(UserList(UserIndex).MascotasIndex(slotIndex)) Then
+            If NpcList(UserList(UserIndex).MascotasIndex(slotIndex).ArrayIndex).flags.NPCActive Then
+                cantidad = cantidad + 1
+            End If
+        End If
+    Next slotIndex
+
+    ContarActivas = cantidad
+    Exit Function
+
+ContarActivas_Err:
+    Call TraceError(Err.Number, Err.Description, "Trabajo.ContarActivas", Erl)
+End Function
+
+''
+' Devuelve el slot de la invocación activa con menos tiempo de existencia restante.
+'
+' @return Índice del slot, o -1 si no hay invocaciones activas.
+'
+Public Function SlotInvocacionMasVieja(ByVal UserIndex As Integer) As Integer
+    On Error GoTo SlotInvocacionMasVieja_Err
+
+    Dim slotIndex   As Integer
+    Dim slotElegido As Integer
+    Dim minTiempo   As Long
+    Dim tiempoNpc   As Long
+
+    slotElegido = -1
+    minTiempo = IntervaloInvocacion + 1
+
+    For slotIndex = MAXMASCOTAS + 1 To MAX_SLOTS_MASCOTAS
+        If IsValidNpcRef(UserList(UserIndex).MascotasIndex(slotIndex)) Then
+            If NpcList(UserList(UserIndex).MascotasIndex(slotIndex).ArrayIndex).flags.NPCActive Then
+                tiempoNpc = NpcList(UserList(UserIndex).MascotasIndex(slotIndex).ArrayIndex).Contadores.TiempoExistencia
+                If tiempoNpc < minTiempo Then
+                    minTiempo = tiempoNpc
+                    slotElegido = slotIndex
+                End If
+            End If
+        End If
+    Next slotIndex
+
+    SlotInvocacionMasVieja = slotElegido
+    Exit Function
+
+SlotInvocacionMasVieja_Err:
+    Call TraceError(Err.Number, Err.Description, "Trabajo.SlotInvocacionMasVieja", Erl)
+End Function
+
+''
+' Si se alcanzó el tope de criaturas activas, quita la invocación más vieja
+' para dejarle lugar a una domada (las domadas tienen prioridad).
+'
+' @return True si hay lugar (o se liberó uno), False si las activas son todas domadas.
+'
+Public Function LiberarLugarParaDomada(ByVal UserIndex As Integer) As Boolean
+    On Error GoTo LiberarLugarParaDomada_Err
+
+    Dim slotInvocacion As Integer
+
+    If ContarActivas(UserIndex) < MAX_MASCOTAS_ACTIVAS Then
+        LiberarLugarParaDomada = True
+        Exit Function
+    End If
+
+    slotInvocacion = SlotInvocacionMasVieja(UserIndex)
+    If slotInvocacion = -1 Then Exit Function
+
+    Call QuitarNPC(UserList(UserIndex).MascotasIndex(slotInvocacion).ArrayIndex, eSummonNew)
+    LiberarLugarParaDomada = True
+    Exit Function
+
+LiberarLugarParaDomada_Err:
+    Call TraceError(Err.Number, Err.Description, "Trabajo.LiberarLugarParaDomada", Erl)
+End Function
+
 Sub DoDomar(ByVal UserIndex As Integer, ByVal NpcIndex As Integer)
     On Error GoTo ErrHandler
     Dim puntosDomar As Integer
@@ -1740,8 +1873,8 @@ Sub DoDomar(ByVal UserIndex As Integer, ByVal NpcIndex As Integer)
     End If
     With UserList(UserIndex)
         If .flags.Privilegios And e_PlayerType.Consejero Then Exit Sub
-        If .NroMascotas < MAXMASCOTAS And HayEspacioMascotas(UserIndex) Then
-            If IsValidNpcRef(NpcList(NpcIndex).MaestroNPC) > 0 Or IsValidUserRef(NpcList(NpcIndex).MaestroUser) Then
+        If ContarDomadas(UserIndex) < MAXMASCOTAS And HayEspacioMascotas(UserIndex) Then
+            If IsValidNpcRef(NpcList(NpcIndex).MaestroNPC) Or IsValidUserRef(NpcList(NpcIndex).MaestroUser) Then
                 ' Msg656=La criatura ya tiene amo.
                 Call WriteLocaleMsg(UserIndex, MSG_CRIATURA_TIENE_AMO, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
                 Exit Sub
@@ -1760,6 +1893,7 @@ Sub DoDomar(ByVal UserIndex As Integer, ByVal NpcIndex As Integer)
             End If
             If NpcList(NpcIndex).flags.Domable <= puntosDomar And RandomNumber(1, 5) = 1 Then
                 Dim Index As Integer
+                Call LiberarLugarParaDomada(UserIndex)
                 .NroMascotas = .NroMascotas + 1
                 Index = FreeMascotaIndex(UserIndex)
                 Call SetNpcRef(.MascotasIndex(Index), NpcIndex)

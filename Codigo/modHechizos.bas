@@ -776,47 +776,29 @@ Public Sub HechizoInvocacion(ByVal UserIndex As Integer, ByRef b As Boolean)
                 End If
 
                 For i = 1 To Hechizos(spellId).cant
-                    petSlot = -1
-                    minTiempo = IntervaloInvocacion
-
-                    For j = 1 To MAXMASCOTAS
-                        If .MascotasIndex(j).ArrayIndex > 0 Then
-                            If IsValidNpcRef(.MascotasIndex(j)) Then
-                                If NpcList(.MascotasIndex(j).ArrayIndex).flags.NPCActive Then
-                                    If NpcList(.MascotasIndex(j).ArrayIndex).Contadores.TiempoExistencia > 0 _
-                                    And NpcList(.MascotasIndex(j).ArrayIndex).Contadores.TiempoExistencia < minTiempo Then
-                                        petSlot = j
-                                        minTiempo = NpcList(.MascotasIndex(j).ArrayIndex).Contadores.TiempoExistencia
-                                    End If
-                                Else
-                                    Call ClearNpcRef(.MascotasIndex(j))
-                                    petSlot = -1
-                                    Exit For
-                                End If
-                            Else
-                                petSlot = -1
-                                minTiempo = 0
+                    ' Tope de criaturas activas: si está lleno, se reemplaza la invocación más vieja.
+                    ' Si las activas son todas domadas, no se puede invocar.
+                    If ContarActivas(UserIndex) >= MAX_MASCOTAS_ACTIVAS Then
+                        petSlot = SlotInvocacionMasVieja(UserIndex)
+                        If petSlot = -1 Then
+                            If Not b Then
+                                ' Msg660=No puedes controlar mas criaturas.
+                                Call WriteLocaleMsg(UserIndex, MSG_NO_PUEDES_CONTROLAR_MAS_CRIATURAS, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
                             End If
-                        ElseIf .MascotasType(j) = 0 Then
-                            petSlot = -1
-                            MinTiempo = 0
+                            Exit For
                         End If
-                    Next j
-
-                    If petSlot > -1 Then
-                        If IsValidNpcRef(.MascotasIndex(petSlot)) Then
-                            Call QuitarNPC(.MascotasIndex(petSlot).ArrayIndex, eSummonNew)
-                        End If
+                        Call QuitarNPC(.MascotasIndex(petSlot).ArrayIndex, eSummonNew)
                     End If
 
-                    If .NroMascotas >= MAXMASCOTAS Then Exit For
+                    petSlot = FreeInvocacionIndex(UserIndex)
+                    If petSlot = -1 Then Exit For
 
                     npcIndex = SpawnNpc(Hechizos(spellId).NumNpc, TargetPos, False, False, False, UserIndex, Hechizos(spellId).wav)
-                    If npcIndex <= 0 Then Exit Sub
+                    If NpcIndex <= 0 Then Exit For
 
-                    .NroMascotas = .NroMascotas + 1
+                    ' Si el slot tenía un type residual (ref rota), ya estaba contado
+                    If .MascotasType(petSlot) = 0 Then .NroMascotas = .NroMascotas + 1
 
-                    petSlot = FreeMascotaIndex(UserIndex)
                     Call SetNpcRef(.MascotasIndex(petSlot), npcIndex)
                     .MascotasType(petSlot) = NpcList(npcIndex).Numero
 
@@ -829,10 +811,10 @@ Public Sub HechizoInvocacion(ByVal UserIndex As Integer, ByRef b As Boolean)
                     End If
 
                     Call FollowAmo(npcIndex)
+                    b = True
                 Next i
 
-                Call InfoHechizo(UserIndex)
-                b = True
+                If b Then Call InfoHechizo(UserIndex)
 
             Case 2
                 ' Guardar / volver a invocar mascotas existentes
@@ -864,8 +846,9 @@ Public Sub HechizoInvocacion(ByVal UserIndex As Integer, ByRef b As Boolean)
                 Else
                     For i = 1 To MAXMASCOTAS
                         If .MascotasType(i) > 0 And .MascotasIndex(i).ArrayIndex = 0 Then
+                            ' Las domadas tienen prioridad: si no hay lugar, se va el elemental más viejo
+                            Call LiberarLugarParaDomada(UserIndex)
                             npcIndex = SpawnNpc(.MascotasType(i), TargetPos, True, True, False, UserIndex)
-
                             If npcIndex > 0 Then
                                 Call SetNpcRef(.MascotasIndex(i), npcIndex)
                                 Call SetUserRef(NpcList(npcIndex).MaestroUser, UserIndex)
@@ -1062,7 +1045,7 @@ Function HandlePetSpell(ByVal UserIndex As Integer, ByVal uh As Integer) As Bool
             Exit Function
         End If
         Dim j As Integer
-        For j = 1 To MAXMASCOTAS
+        For j = 1 To MAX_SLOTS_MASCOTAS
             If IsValidNpcRef(.MascotasIndex(j)) Then
                 Dim Effect As IBaseEffectOverTime
                 Set Effect = FindEffectOnTarget(UserIndex, NpcList(.MascotasIndex(j).ArrayIndex).EffectOverTime, Hechizos(uh).EotId)

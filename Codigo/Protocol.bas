@@ -4601,7 +4601,7 @@ Private Sub HandlePetFollowAll(ByVal UserIndex As Integer)
         End If
         Dim i As Integer
         Dim NpcIndex As Integer
-        For i = 1 To MAXMASCOTAS
+        For i = 1 To MAX_SLOTS_MASCOTAS
             If IsValidNpcRef(.MascotasIndex(i)) Then
                 NpcIndex = .MascotasIndex(i).ArrayIndex
                 If NpcList(NpcIndex).flags.NPCActive Then
@@ -8141,7 +8141,7 @@ Private Sub HandlePetLeaveAll(ByVal UserIndex As Integer)
     On Error GoTo ErrHandler
     With UserList(UserIndex)
         Dim AlmenosUna As Boolean, i As Integer
-        For i = 1 To MAXMASCOTAS
+        For i = 1 To MAX_SLOTS_MASCOTAS
             If IsValidNpcRef(.MascotasIndex(i)) Then
                 If NpcList(.MascotasIndex(i).ArrayIndex).flags.NPCActive Then
                     Call QuitarNPC(.MascotasIndex(i).ArrayIndex, e_DeleteSource.ePetLeave)

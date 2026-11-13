@@ -1270,7 +1270,7 @@ Sub CloseUser(ByVal UserIndex As Integer)
         Call EraseUserChar(UserIndex, True)
         errordesc = "ERROR AL BORRAR MASCOTAS"
         'Borrar mascotas
-        For i = 1 To MAXMASCOTAS
+        For i = 1 To MAX_SLOTS_MASCOTAS
             If IsValidNpcRef(.MascotasIndex(i)) Then
                 If NpcList(.MascotasIndex(i).ArrayIndex).flags.NPCActive Then Call QuitarNPC(.MascotasIndex(i).ArrayIndex, eClearPlayerPets)
             End If
