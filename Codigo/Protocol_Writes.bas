@@ -2948,6 +2948,9 @@ Public Sub WriteQuestDetails(ByVal UserIndex As Integer, ByVal QuestIndex As Int
     For i = 1 To QuestList(QuestIndex).RewardSpellCount
         Writer.WriteInt16 (QuestList(QuestIndex).RewardSpellList(i))
     Next i
+    'Enviamos el NPC y el mapa de entrega
+    Call Writer.WriteInt16(QuestList(questIndex).TalkTo)
+    Call Writer.WriteInt16(QuestList(questIndex).PosMap)
     Call modSendData.SendData(ToIndex, UserIndex)
     Exit Sub
 WriteQuestDetails_Err:
