@@ -2162,6 +2162,7 @@ Public Type t_Quest
     PermittedFactions As Integer
     GlobalQuestIndex As Integer
     GlobalQuestThresholdNeeded As Long
+    PosMap As Integer
 End Type
 
 ' ******************* RETOS ************************
