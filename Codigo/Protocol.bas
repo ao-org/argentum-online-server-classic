@@ -937,6 +937,8 @@ Public Function HandleIncomingData(ByVal ConnectionID As Long, ByVal Message As 
             Call HandleHooTargetedSpellCast(UserIndex)
         Case ClientPacketID.eHooHouseDoorAction
             Call HandleHooHouseDoorAction(UserIndex)
+        Case ClientPacketID.eToggleAutoCombat
+            Call HandleToggleAutoCombat(UserIndex)
             #If PYMMO = 0 Then
             Case ClientPacketID.eCreateAccount
                 Call HandleCreateAccount(ConnectionID)
@@ -1098,6 +1100,7 @@ Public Function ExecuteHooTargetedSpellCast(ByVal UserIndex As Integer, ByVal Sp
 RestoreRejected:
         ExecuteHooTargetedSpellCast = eHooTargetedSpellCastResult_Rejected
     End If
+    Call OnUserCombatActionOnNpc(UserIndex, e_AutoCombatActionType.e_AutoCombatActionSpell, NpcIndex, CByte(spellSlot))
     Call RestoreHooTargetedSpellState(UserIndex, OldSpell, OldTargetNpc, OldTargetUser)
     Exit Function
 
@@ -2082,6 +2085,7 @@ Private Sub HandleWalk(ByVal UserIndex As Integer)
                 .flags.Meditando = False
                 UserList(UserIndex).Char.FX = 0
                 Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(UserList(UserIndex).Char.charindex, 0))
+                Call OnUserMeditationInterrupted(UserIndex)
             End If
             Dim currentTick As Long
             currentTick = GetTickCountRaw()
@@ -2224,11 +2228,17 @@ Private Sub HandleAttack(ByVal UserIndex As Integer)
             UserList(UserIndex).flags.Meditando = False
             UserList(UserIndex).Char.FX = 0
             Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(UserList(UserIndex).Char.charindex, 0))
+            Call OnUserMeditationInterrupted(UserIndex)
         End If
         'If exiting, cancel
         Call CancelExit(UserIndex)
+        Dim meleeTargetNpc As Integer
+        meleeTargetNpc = GetMeleeTargetNpc(UserIndex)
         'Attack!
         Call UsuarioAtaca(UserIndex)
+        If meleeTargetNpc > 0 Then
+            Call OnUserCombatActionOnNpc(UserIndex, e_AutoCombatActionType.e_AutoCombatActionMelee, meleeTargetNpc)
+        End If
     End With
     Exit Sub
 HandleAttack_Err:
@@ -2970,6 +2980,7 @@ Private Sub HandleWorkLeftClick(ByVal UserIndex As Integer)
             .flags.Meditando = False
             .Char.FX = 0
             Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, 0))
+            Call OnUserMeditationInterrupted(UserIndex)
         End If
         'If exiting, cancel
         Call CancelExit(UserIndex)
@@ -3103,6 +3114,7 @@ Private Sub HandleWorkLeftClick(ByVal UserIndex As Integer)
                         If UserAttackInteractionResult.CanAttack Then
                             If UserAttackInteractionResult.TurnPK Then Call VolverCriminal(UserIndex)
                             Call UsuarioAtacaNpc(UserIndex, tN, Ranged)
+                            Call OnUserCombatActionOnNpc(UserIndex, e_AutoCombatActionType.e_AutoCombatActionRanged, tN)
                             consumirMunicion = True
                             If ProjectileType > 0 And .flags.Oculto = 0 Then
                                 Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareCreateProjectile(UserList(UserIndex).pos.x, UserList(UserIndex).pos.y, x, y, _
@@ -3162,9 +3174,18 @@ Private Sub HandleWorkLeftClick(ByVal UserIndex As Integer)
                 If Not IntervaloPermiteLanzarSpell(UserIndex) Then Exit Sub
                 'Check intervals and cast
                 If .flags.Hechizo > 0 Then
+                    Dim castSpellSlot As Byte
+                    Dim castTargetNpc As Integer
+                    castSpellSlot = .flags.Hechizo
+                    If IsValidNpcRef(.flags.TargetNPC) And Not IsValidUserRef(.flags.targetUser) Then
+                        castTargetNpc = .flags.TargetNPC.ArrayIndex
+                    End If
                     .Counters.controlHechizos.HechizosTotales = .Counters.controlHechizos.HechizosTotales + 1
                     Call LanzarHechizo(.flags.Hechizo, UserIndex)
                     .flags.Hechizo = 0
+                    If castTargetNpc > 0 Then
+                        Call OnUserCombatActionOnNpc(UserIndex, e_AutoCombatActionType.e_AutoCombatActionSpell, castTargetNpc, castSpellSlot)
+                    End If
                 Else
                     ' Msg587=¡Primero selecciona el hechizo que quieres lanzar!
                     Call WriteLocaleMsg(UserIndex, MSG_PRIMERO_SELECCIONA_HECHIZO_QUIERES_LANZAR, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_FIGHT)
@@ -4741,87 +4762,20 @@ HandleRest_Err:
     Call TraceError(Err.Number, Err.Description, "Protocol.HandleRest", Erl)
 End Sub
 
-''
-' Handles the "Meditate" message.
-'
-' @param    UserIndex The index of the user sending the message.
 Private Sub HandleMeditate(ByVal UserIndex As Integer)
     On Error GoTo HandleMeditate_Err
-    'Arreglí un bug que mandaba un index de la meditacion diferente
-    'al que decia el server.
-    With UserList(UserIndex)
-        'Si ya tiene el mana completo, no lo dejamos meditar.
-        If .Stats.MinMAN = .Stats.MaxMAN Then Exit Sub
-        'Las clases NO MAGICAS no meditan...
-        If .clase = e_Class.Hunter Or .clase = e_Class.Trabajador Or .clase = e_Class.Warrior Or .clase = e_Class.Pirat Or .clase = e_Class.Thief Then Exit Sub
-        If .flags.Muerto = 1 Then
-            'Msg77=¡¡Estás muerto!!.
-            Call WriteLocaleMsg(UserIndex, MSG_MUERTO, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
-            Exit Sub
-        End If
-        If .flags.Montado = 1 Then
-            ' Msg756=No podes meditar estando montado.
-            Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_MEDITAR_ESTANDO_MONTADO, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
-            Exit Sub
-        End If
-        .flags.Meditando = Not .flags.Meditando
-        If .flags.Meditando Then
-            .Counters.TimerMeditar = 0
-            .Counters.TiempoInicioMeditar = 0
-            Dim customEffect As Integer
-            Dim Index        As Integer
-            Dim obj          As t_ObjData
-            For Index = 1 To UBound(.invent.Object)
-                If .invent.Object(Index).ObjIndex > 0 Then
-                    If .invent.Object(Index).ObjIndex > 0 Then
-                        obj = ObjData(.invent.Object(Index).ObjIndex)
-                        If obj.OBJType = otDonator And obj.Subtipo = 4 And .invent.Object(Index).Equipped Then
-                            customEffect = obj.HechizoIndex
-                            Exit For
-                        End If
-                    End If
-                End If
-            Next Index
-            If customEffect > 0 Then
-                .Char.FX = customEffect
-            Else
-                Dim isCriminal As Boolean
-                
-                isCriminal = (.Faccion.Status = e_Facciones.Caos _
-                           Or .Faccion.Status = e_Facciones.Criminal _
-                           Or .Faccion.Status = e_Facciones.concilio)
-                
-                Select Case .Stats.ELV
-                    Case 1 To 12
-                        .Char.FX = IIf(isCriminal, MeditationCriminalLevel1to12, MeditationLevel1to12)
-                    Case 13 To 17
-                        .Char.FX = IIf(isCriminal, MeditationCriminalLevel13to17, MeditationLevel13to17)
-                    Case 18 To 24
-                        .Char.FX = IIf(isCriminal, MeditationCriminalLevel18to24, MeditationLevel18to24)
-                    Case 25 To 28
-                        .Char.FX = IIf(isCriminal, MeditationCriminalLevel25to28, MeditationLevel25to28)
-                    Case 29 To 32
-                        .Char.FX = IIf(isCriminal, MeditationCriminalLevel29to32, MeditationLevel29to32)
-                    Case 33 To 36
-                        .Char.FX = IIf(isCriminal, MeditationCriminalLevel33to36, MeditationLevel33to36)
-                    Case 37 To 39
-                        .Char.FX = IIf(isCriminal, MeditationCriminalLevel37to39, MeditationLevel37to39)
-                    Case 40 To 42
-                        .Char.FX = IIf(isCriminal, MeditationCriminalLevel40to42, MeditationLevel40to42)
-                    Case 43 To 44
-                        .Char.FX = IIf(isCriminal, MeditationCriminalLevel43to44, MeditationLevel43to44)
-                    Case 45 To 46
-                        .Char.FX = IIf(isCriminal, MeditationCriminalLevel45to46, MeditationLevel45to46)
-                    Case Else
-                        .Char.FX = MeditationLevelMax
-                End Select
-            End If
-        Else
-            .Char.FX = 0
-        End If
-        Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, .Char.FX, .pos.x, .pos.y))
-    End With
+
+    If UserList(UserIndex).flags.Meditando Then
+        Call StopMeditation(UserIndex)
+        Call OnUserMeditationInterrupted(UserIndex)
+        Exit Sub
+    End If
+
+    If TryStartMeditation(UserIndex) Then
+        Call OnUserMeditationStarted(UserIndex)
+    End If
     Exit Sub
+
 HandleMeditate_Err:
     Call TraceError(Err.Number, Err.Description, "Protocol.HandleMeditate", Erl)
 End Sub
@@ -8450,6 +8404,7 @@ Public Sub HandleActionOnGroupFrame(ByVal UserIndex As Integer)
             .flags.Meditando = False
             .Char.FX = 0
             Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, 0))
+            Call OnUserMeditationInterrupted(UserIndex)
         End If
         .flags.TargetUser = UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(TargetGroupMember)
         If .flags.Hechizo > 0 Then
@@ -8633,4 +8588,10 @@ Public Function HandleModifyCastleWhiteList(ByVal UserIndex As Integer)
 
 End Function
 
-
+Private Sub HandleToggleAutoCombat(ByVal UserIndex As Integer)
+    On Error GoTo HandleToggleAutoCombat_Err
+    Call ToggleAutoCombat(UserIndex)
+    Exit Sub
+HandleToggleAutoCombat_Err:
+    Call TraceError(Err.Number, Err.Description, "Protocol.HandleToggleAutoCombat", Erl)
+End Sub

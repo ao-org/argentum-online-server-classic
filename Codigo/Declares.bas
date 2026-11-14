@@ -2165,6 +2165,35 @@ Public Type t_Quest
     PosMap As Integer
 End Type
 
+Public Enum e_AutoCombatState
+    e_AutoCombatOff = 0
+    e_AutoCombatArmed = 1
+    e_AutoCombatRepeating = 2
+    e_AutoCombatMeditating = 3
+End Enum
+
+Public Enum e_AutoCombatActionType
+    e_AutoCombatActionNone = 0
+    e_AutoCombatActionMelee = 1
+    e_AutoCombatActionRanged = 2
+    e_AutoCombatActionSpell = 3
+End Enum
+
+Public Enum e_AutoCombatStopReason
+    e_AutoCombatStopByUser = 1
+    e_AutoCombatStopUserDied = 2
+    e_AutoCombatStopMapChanged = 3
+    e_AutoCombatStopTargetDied = 4
+    e_AutoCombatStopOutOfRange = 5
+    e_AutoCombatStopOtherTarget = 6
+    e_AutoCombatStopNoArrows = 7
+    e_AutoCombatStopDamageReceived = 8
+    e_AutoCombatStopMeditationCut = 9
+    e_AutoCombatStopCantMeditate = 10
+    e_AutoCombatStopDisconnected = 11
+End Enum
+
+
 ' ******************* RETOS ************************
 Public Enum e_SolicitudRetoEstado
     Libre
@@ -2606,6 +2635,14 @@ Public Type t_AutomatedAction
     skill As e_Skill
     StartingTime As Long
     IsActive As Boolean
+End Type
+
+Public Type t_AutoCombat
+    State       As e_AutoCombatState
+    ActionType  As e_AutoCombatActionType
+    TargetNpc   As t_NpcReference
+    SpellSlot   As Byte
+    SpellIndex  As Integer
 End Type
 
 'Flags
@@ -3119,6 +3156,7 @@ Public Type t_User
     PacketTimers(1 To MAX_PACKET_COUNTERS) As Long
     PacketCounters(1 To MAX_PACKET_COUNTERS) As Long
     AutomatedAction As t_AutomatedAction
+    AutoCombat As t_AutoCombat
 End Type
 
 Public MacroIterations(1 To MAX_PACKET_COUNTERS)      As Long

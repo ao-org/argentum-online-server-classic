@@ -4781,3 +4781,14 @@ WriteShowPickUpObj_Err:
     Call Writer.Clear
     Call TraceError(Err.Number, Err.Description, "Argentum20Server.Protocol_Writes.WriteShowPickUpObj", Erl)
 End Sub
+
+Public Sub WriteAutoCombatState(ByVal UserIndex As Integer, ByVal autoCombatState As e_AutoCombatState)
+    On Error GoTo WriteAutoCombatState_Err
+    Call Writer.WriteInt16(ServerPacketID.eAutoCombatState)
+    Call Writer.WriteInt8(CByte(autoCombatState))
+    Call modSendData.SendData(ToIndex, UserIndex)
+    Exit Sub
+WriteAutoCombatState_Err:
+    Call Writer.Clear
+    Call TraceError(Err.Number, Err.Description, "Argentum20Server.Protocol_Writes.WriteAutoCombatState", Erl)
+End Sub
