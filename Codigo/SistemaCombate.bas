@@ -1981,7 +1981,7 @@ Sub AllMascotasAtacanUser(ByVal victim As Integer, ByVal Maestro As Integer)
     Dim iCount       As Long
     Dim mascotaIndex As Integer
     With UserList(Maestro)
-        For iCount = 1 To MAXMASCOTAS
+        For iCount = 1 To MAX_SLOTS_MASCOTAS
             mascotaIndex = .MascotasIndex(iCount).ArrayIndex
             If mascotaIndex > 0 Then
                 If IsValidNpcRef(.MascotasIndex(iCount)) Then
@@ -2016,7 +2016,7 @@ Public Sub AllMascotasAtacanNPC(ByVal NpcIndex As Integer, ByVal UserIndex As In
     Else
         Exit Sub
     End If
-    For j = 1 To MAXMASCOTAS
+    For j = 1 To MAX_SLOTS_MASCOTAS
         If IsValidNpcRef(UserList(UserIndex).MascotasIndex(j)) Then
             mascotaIdx = UserList(UserIndex).MascotasIndex(j).ArrayIndex
             If mascotaIdx > 0 And mascotaIdx <> NpcIndex Then

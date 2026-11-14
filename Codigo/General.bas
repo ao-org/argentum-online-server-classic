@@ -840,7 +840,7 @@ End Function
 Public Sub TiempoInvocacion(ByVal UserIndex As Integer)
     On Error GoTo TiempoInvocacion_Err
     Dim i As Integer
-    For i = 1 To MAXMASCOTAS
+    For i = 1 To MAX_SLOTS_MASCOTAS
         If UserList(UserIndex).MascotasIndex(i).ArrayIndex > 0 Then
             If Not IsValidNpcRef(UserList(UserIndex).MascotasIndex(i)) Then
                 Call ClearNpcRef(UserList(UserIndex).MascotasIndex(i))

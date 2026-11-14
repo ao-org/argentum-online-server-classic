@@ -2424,7 +2424,7 @@ Private Sub WarpMascotas(ByVal UserIndex As Integer)
     Dim ElementalQuitado As Boolean
     Dim SpawnInvalido    As Boolean
     PermiteMascotas = MapInfo(UserList(UserIndex).pos.Map).NoMascotas = False
-    For i = 1 To MAXMASCOTAS
+    For i = 1 To MAX_SLOTS_MASCOTAS
         Index = UserList(UserIndex).MascotasIndex(i).ArrayIndex
         If IsValidNpcRef(UserList(UserIndex).MascotasIndex(i)) Then
             iMinHP = NpcList(Index).Stats.MinHp
@@ -2443,7 +2443,16 @@ Private Sub WarpMascotas(ByVal UserIndex As Integer)
             iMinHP = 0
             PetTiempoDeVida = 0
         End If
-        petType = UserList(UserIndex).MascotasType(i)
+        If i > MAXMASCOTAS Then
+            ' Slot de invocación: nunca se respawnea. Si quedó un type residual, se limpia.
+            If UserList(UserIndex).MascotasType(i) > 0 Then
+                UserList(UserIndex).MascotasType(i) = 0
+                UserList(UserIndex).NroMascotas = UserList(UserIndex).NroMascotas - 1
+            End If
+            petType = 0
+        Else
+            petType = UserList(UserIndex).MascotasType(i)
+        End If
         If petType > 0 And PermiteMascotas And (UserList(UserIndex).flags.MascotasGuardadas = 0 Or UserList(UserIndex).MascotasIndex(i).ArrayIndex > 0) And PetTiempoDeVida = 0 Then
             Dim SpawnPos As t_WorldPos
             SpawnPos.Map = UserList(UserIndex).pos.Map
@@ -3405,7 +3414,7 @@ Public Sub HandleUserPetsOnDeath(ByVal UserIndex As Integer)
             End If
         End If
         'Procesar mascotas ACTIVAS, si hay protección guardarlas, si no hay protección matarlas
-        For i = 1 To MAXMASCOTAS
+        For i = 1 To MAX_SLOTS_MASCOTAS
             If .MascotasIndex(i).ArrayIndex > 0 Then   ' Hay mascota activa
                 'Obtener si es mascota domada (TiempoExistencia = 0)
                 Dim isTamed As Boolean

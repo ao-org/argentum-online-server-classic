@@ -1772,7 +1772,7 @@ End Sub
 Public Sub AllFollowAmo(ByVal UserIndex As Integer)
     On Error GoTo AllFollowAmo_Err
     Dim j As Long
-    For j = 1 To MAXMASCOTAS
+    For j = 1 To MAX_SLOTS_MASCOTAS
         If UserList(UserIndex).MascotasIndex(j).ArrayIndex > 0 Then
             If IsValidNpcRef(UserList(UserIndex).MascotasIndex(j)) Then
                 Call FollowAmo(UserList(UserIndex).MascotasIndex(j).ArrayIndex)
@@ -1872,14 +1872,9 @@ ErrHandler:
 End Sub
 
 Sub QuitarMascota(ByVal UserIndex As Integer, ByVal NpcIndex As Integer)
-    '***************************************************
-    'Author: Unknown
-    'Last Modification: -
-    '
-    '***************************************************
     On Error GoTo QuitarMascota_Err
     Dim i As Integer
-    For i = 1 To MAXMASCOTAS
+    For i = 1 To MAX_SLOTS_MASCOTAS
         If UserList(UserIndex).MascotasIndex(i).ArrayIndex = NpcIndex Then
             Call ClearNpcRef(UserList(UserIndex).MascotasIndex(i))
             UserList(UserIndex).MascotasType(i) = 0
