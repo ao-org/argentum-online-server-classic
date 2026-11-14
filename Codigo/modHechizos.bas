@@ -823,8 +823,8 @@ Public Sub HechizoInvocacion(ByVal UserIndex As Integer, ByRef b As Boolean)
                 If b Then Call InfoHechizo(UserIndex)
 
             Case 2
-                ' Guardar / volver a invocar mascotas existentes
-                If .NroMascotas <= 0 Then
+                ' Guardar / volver a invocar mascotas existentes (solo domadas)
+                If ContarDomadas(UserIndex) = 0 Then
                     Call WriteLocaleMsg(UserIndex, MSG_NO_TIENES_MASCOTAS, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_New_Naranja)
                     Exit Sub
                 End If
