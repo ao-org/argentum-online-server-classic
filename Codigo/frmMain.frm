@@ -862,18 +862,23 @@ Private Sub TiempoRetos_Timer()
         With Retos.Salas(Sala)
             If .EnUso Then
                 .TiempoRestante = .TiempoRestante - IntervaloTimerRetosEnSegundos
-                If .TiempoItems > 0 Then
-                    .TiempoItems = .TiempoItems - IntervaloTimerRetosEnSegundos
-                    If .TiempoItems <= 0 Then Call TerminarTiempoAgarrarItems(Sala)
-                ElseIf .TiempoRestante <= 0 Then
-                    Call FinalizarReto(Sala, True)
-                End If
+                Select Case .Fase
+                    Case e_FaseReto.DepositoItems
+                        .TiempoItems = .TiempoItems - IntervaloTimerRetosEnSegundos
+                        If .TiempoItems <= 0 Then
+                            Call TerminarTiempoAgarrarItems(Sala)
+                        End If
+                    Case e_FaseReto.EnJuego
+                        If .tiempoRestante <= 0 Then
+                            Call FinalizarReto(Sala, True)
+                        End If
+                End Select
             End If
         End With
     Next
     Exit Sub
 Handler:
-    Call TraceError(Err.Number, Err.Description, "frmMain.TiempoRetos_Timer")
+    Call TraceError(Err.Number, Err.Description, "frmMain.TiempoRetos_Timer", Erl)
 End Sub
 
 Private Sub Minuto_Timer()
