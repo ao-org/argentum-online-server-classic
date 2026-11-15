@@ -357,9 +357,9 @@ Public Sub NpcLanzaSpellSobreArea(ByVal NpcIndex As Integer, ByVal SpellIndex As
     Dim mitadAreaRadio As Integer
     NpcList(NpcIndex).Contadores.IntervaloLanzarHechizo = GetTickCountRaw()
     With Hechizos(SpellIndex)
-        afectaUsers = (.AreaAfecta = 1 Or .AreaAfecta = 3)
-        afectaNPCs = (.AreaAfecta = 2 Or .AreaAfecta = 3)
-        mitadAreaRadio = CInt(.AreaRadio / 2)
+        afectaUsers = (.AreaAfecta = e_AreaAfecta.eAreaAfectaUsuarios Or .AreaAfecta = e_AreaAfecta.eAreaAfectaAmbos)
+        afectaNPCs = (.AreaAfecta = e_AreaAfecta.eAreaAfectaNpcs Or .AreaAfecta = e_AreaAfecta.eAreaAfectaAmbos)
+        mitadAreaRadio = (.AreaRadio - 1) \ 2
         If IsValidUserRef(NpcList(NpcIndex).TargetUser) Then
             PosCasteadaX = UserList(NpcList(NpcIndex).TargetUser.ArrayIndex).pos.x + RandomNumber(-2, 2)
             PosCasteadaY = UserList(NpcList(NpcIndex).TargetUser.ArrayIndex).pos.y + RandomNumber(-2, 2)
@@ -367,8 +367,8 @@ Public Sub NpcLanzaSpellSobreArea(ByVal NpcIndex As Integer, ByVal SpellIndex As
             PosCasteadaX = NpcList(NpcIndex).pos.x + RandomNumber(-2, 2)
             PosCasteadaY = NpcList(NpcIndex).pos.y + RandomNumber(-1, 2)
         End If
-        For x = 1 To .AreaRadio
-            For y = 1 To .AreaRadio
+        For x = 0 To .AreaRadio - 1
+            For y = 0 To .AreaRadio - 1
                 If InMapBounds(NpcList(NpcIndex).pos.Map, x + PosCasteadaX - mitadAreaRadio, PosCasteadaY + y - mitadAreaRadio) Then
                     TargetMap = MapData(x + PosCasteadaX - mitadAreaRadio, PosCasteadaY + y - mitadAreaRadio, NpcList(NpcIndex).pos.Map)
                     If afectaUsers And TargetMap.UserIndex > 0 Then
@@ -920,17 +920,52 @@ End Sub
 
 Private Sub HechizoSobreArea(ByVal UserIndex As Integer, ByRef b As Boolean)
     On Error GoTo HechizoSobreArea_Err
-    Dim afectaUsers  As Boolean
-    Dim afectaNPCs   As Boolean
-    Dim TargetMap    As t_MapBlock
-    Dim PosCasteadaX As Byte
-    Dim PosCasteadaY As Byte
-    Dim h            As Integer
-    Dim x            As Long
-    Dim y            As Long
+    Dim afectaUsers    As Boolean
+    Dim afectaNPCs     As Boolean
+    Dim TargetMap      As t_MapBlock
+    Dim PosCasteadaX   As Byte
+    Dim PosCasteadaY   As Byte
+    Dim h              As Integer
+    Dim x              As Long
+    Dim y              As Long
+    Dim mitadAreaRadio As Integer
+    Dim areaTileX      As Integer
+    Dim areaTileY      As Integer
+    Dim targetsHit     As Integer
     h = UserList(UserIndex).Stats.UserHechizos(UserList(UserIndex).flags.Hechizo)
     PosCasteadaX = UserList(UserIndex).flags.TargetX
     PosCasteadaY = UserList(UserIndex).flags.TargetY
+    afectaUsers = (Hechizos(h).AreaAfecta = e_AreaAfecta.eAreaAfectaUsuarios Or Hechizos(h).AreaAfecta = e_AreaAfecta.eAreaAfectaAmbos)
+    afectaNPCs = (Hechizos(h).AreaAfecta = e_AreaAfecta.eAreaAfectaNpcs Or Hechizos(h).AreaAfecta = e_AreaAfecta.eAreaAfectaAmbos)
+    ' Area centrada en el tile objetivo: AreaRadio es el lado del cuadrado
+    mitadAreaRadio = (Hechizos(h).AreaRadio - 1) \ 2
+    For x = 0 To Hechizos(h).AreaRadio - 1
+        For y = 0 To Hechizos(h).AreaRadio - 1
+            areaTileX = PosCasteadaX + x - mitadAreaRadio
+            areaTileY = PosCasteadaY + y - mitadAreaRadio
+            If InMapBounds(UserList(UserIndex).pos.map, areaTileX, areaTileY) Then
+                TargetMap = MapData(areaTileX, areaTileY, UserList(UserIndex).pos.map)
+                If afectaUsers And TargetMap.UserIndex > 0 Then
+                    If UserList(TargetMap.UserIndex).flags.Muerto = 0 Then
+                        If AreaHechizo(UserIndex, TargetMap.UserIndex, PosCasteadaX, PosCasteadaY, False) Then
+                            targetsHit = targetsHit + 1
+                            Call SendAreaSpellTargetFx(UserIndex, h, areaTileX, areaTileY)
+                        End If
+                    End If
+                End If
+                If afectaNPCs And TargetMap.NpcIndex > 0 Then
+                    If CanAreaSpellHitNpc(UserIndex, TargetMap.NpcIndex) Then
+                        If AreaHechizo(UserIndex, TargetMap.NpcIndex, PosCasteadaX, PosCasteadaY, True) Then
+                            targetsHit = targetsHit + 1
+                            Call SendAreaSpellTargetFx(UserIndex, h, areaTileX, areaTileY)
+                        End If
+                    End If
+                End If
+            End If
+        Next y
+    Next x
+    b = (targetsHit > 0)
+    If Not b Then Exit Sub
     'Envio Palabras magicas, wavs y fxs.
     If UserList(UserIndex).flags.NoPalabrasMagicas = 0 Then
         Call DecirPalabrasMagicas(h, UserIndex)
@@ -941,46 +976,37 @@ Private Sub HechizoSobreArea(ByVal UserIndex As Integer, ByRef b As Boolean)
     If Hechizos(h).ParticleViaje = 0 Then
         Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessagePlayWave(Hechizos(h).wav, PosCasteadaX, PosCasteadaY))
     End If
-    afectaUsers = (Hechizos(h).AreaAfecta = 1 Or Hechizos(h).AreaAfecta = 3)
-    afectaNPCs = (Hechizos(h).AreaAfecta = 2 Or Hechizos(h).AreaAfecta = 3)
-    For x = 1 To Hechizos(h).AreaRadio
-        For y = 1 To Hechizos(h).AreaRadio
-            TargetMap = MapData(x + PosCasteadaX - CInt(Hechizos(h).AreaRadio / 2), PosCasteadaY + y - CInt(Hechizos(h).AreaRadio / 2), UserList(UserIndex).pos.Map)
-            If afectaUsers And TargetMap.UserIndex > 0 Then
-                If UserList(TargetMap.UserIndex).flags.Muerto = 0 Then
-                    Call AreaHechizo(UserIndex, TargetMap.UserIndex, PosCasteadaX, PosCasteadaY, False)
-                    If Hechizos(h).FXgrh > 0 Then 'Envio Fx?
-                        If Hechizos(h).ParticleViaje > 0 Then
-                            Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessageParticleFXWithDestinoXY(UserList(UserIndex).Char.charindex, Hechizos(h).ParticleViaje, _
-                                    Hechizos(h).FXgrh, 1, Hechizos(h).wav, 1, x, y))
-                        Else
-                            Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessageFxPiso(Hechizos(h).FXgrh, UserList(TargetMap.UserIndex).pos.x, UserList( _
-                                    TargetMap.UserIndex).pos.y))
-                        End If
-                    End If
-                End If
-            End If
-            If afectaNPCs And TargetMap.NpcIndex > 0 Then
-                If NpcList(TargetMap.NpcIndex).Attackable Then
-                    Call AreaHechizo(UserIndex, TargetMap.NpcIndex, PosCasteadaX, PosCasteadaY, True)
-                    If Hechizos(h).FXgrh > 0 Then 'Envio Fx?
-                        If Hechizos(h).ParticleViaje > 0 Then
-                            Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessageParticleFXWithDestinoXY(UserList(UserIndex).Char.charindex, Hechizos(h).ParticleViaje, _
-                                    Hechizos(h).FXgrh, 1, Hechizos(h).wav, 1, x, y))
-                        Else
-                            Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessageFxPiso(Hechizos(h).FXgrh, NpcList(TargetMap.NpcIndex).pos.x, NpcList( _
-                                    TargetMap.NpcIndex).pos.y))
-                        End If
-                    End If
-                End If
-            End If
-        Next y
-    Next x
-    b = True
     Exit Sub
 HechizoSobreArea_Err:
     Call TraceError(Err.Number, Err.Description, "modHechizos.HechizoSobreArea", Erl)
 End Sub
+
+Private Sub SendAreaSpellTargetFx(ByVal UserIndex As Integer, ByVal SpellIndex As Integer, ByVal TileX As Integer, ByVal TileY As Integer)
+    On Error GoTo SendAreaSpellTargetFx_Err
+    If Hechizos(SpellIndex).FXgrh <= 0 Then Exit Sub
+    If Hechizos(SpellIndex).ParticleViaje > 0 Then
+        Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessageParticleFXWithDestinoXY(UserList(UserIndex).Char.charindex, Hechizos(SpellIndex).ParticleViaje, _
+                Hechizos(SpellIndex).FXgrh, 1, Hechizos(SpellIndex).wav, 1, TileX, TileY))
+    Else
+        Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessageFxPiso(Hechizos(SpellIndex).FXgrh, TileX, TileY))
+    End If
+    Exit Sub
+SendAreaSpellTargetFx_Err:
+    Call TraceError(Err.Number, Err.Description, "modHechizos.SendAreaSpellTargetFx", Erl)
+End Sub
+
+Private Function CanAreaSpellHitNpc(ByVal UserIndex As Integer, ByVal NpcIndex As Integer) As Boolean
+    On Error GoTo CanAreaSpellHitNpc_Err
+    Dim attackResult As t_AttackInteractionResult
+    attackResult = UserCanAttackNpc(UserIndex, NpcIndex)
+    If Not attackResult.CanAttack Then Exit Function
+    ' El dano colateral de un area nunca vuelve criminal al lanzador
+    If attackResult.TurnPK Then Exit Function
+    CanAreaSpellHitNpc = True
+    Exit Function
+CanAreaSpellHitNpc_Err:
+    Call TraceError(Err.Number, Err.Description, "modHechizos.CanAreaSpellHitNpc", Erl)
+End Function
 
 Sub HechizoMaterializacion(ByVal UserIndex As Integer, ByRef b As Boolean)
     On Error GoTo HechizoMaterializacion_Err
@@ -1005,7 +1031,7 @@ HechizoMaterializacion_Err:
     Call TraceError(Err.Number, Err.Description, "modHechizos.HechizoMaterializacion", Erl)
 End Sub
 
-Sub HandleHechizoTerreno(ByVal UserIndex As Integer, ByVal uh As Integer)
+Function HandleHechizoTerreno(ByVal UserIndex As Integer, ByVal uh As Integer) As Boolean
     On Error GoTo HandleHechizoTerreno_Err
     Dim b As Boolean
     With UserList(UserIndex)
@@ -1037,10 +1063,11 @@ Sub HandleHechizoTerreno(ByVal UserIndex As Integer, ByVal uh As Integer)
             Call WriteUpdateSta(UserIndex)
         End If
     End With
-    Exit Sub
+    HandleHechizoTerreno = b
+    Exit Function
 HandleHechizoTerreno_Err:
     Call TraceError(Err.Number, Err.Description, "modHechizos.HandleHechizoTerreno", Erl)
-End Sub
+End Function
 
 Function HandlePetSpell(ByVal UserIndex As Integer, ByVal uh As Integer) As Boolean
     With UserList(UserIndex)
@@ -1366,8 +1393,7 @@ Function LanzarHechizo(ByVal Index As Integer, ByVal UserIndex As Integer) As Bo
                     Call WriteLocaleMsg(UserIndex, MSG_TARGET_INVALIDO_792, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_New_Naranja)
                 End If
             Case e_TargetType.uTerreno
-                SpellCastSuccess = True
-                Call HandleHechizoTerreno(UserIndex, uh)
+                SpellCastSuccess = HandleHechizoTerreno(UserIndex, uh)
             Case e_TargetType.uPets
                 SpellCastSuccess = HandlePetSpell(UserIndex, uh)
         End Select
@@ -3894,23 +3920,16 @@ DesplazarHechizo_Err:
     Call TraceError(Err.Number, Err.Description, "modHechizos.DesplazarHechizo", Erl)
 End Sub
 
-Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y As Byte, Npc As Boolean)
+Private Function AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y As Byte, Npc As Boolean) As Boolean
     On Error GoTo AreaHechizo_Err
-    Dim calculo        As Integer
-    Dim TilesDifUser   As Integer
-    Dim TilesDifNpc    As Integer
     Dim tilDif         As Integer
     Dim h2             As Integer
     Dim Hit            As Integer
     Dim Damage         As Integer
-    Dim porcentajeDesc As Integer
     h2 = UserList(UserIndex).Stats.UserHechizos(UserList(UserIndex).flags.Hechizo)
-    'Calculo de descuesto de golpe por cercania.
-    TilesDifUser = x + y
     If Npc Then
         If IsSet(Hechizos(h2).Effects, e_SpellEffects.eDoDamage) Then
-            TilesDifNpc = NpcList(NpcIndex).pos.x + NpcList(NpcIndex).pos.y
-            tilDif = TilesDifUser - TilesDifNpc
+            tilDif = AreaSpellTileDistance(x, y, NpcList(NpcIndex).pos.x, NpcList(NpcIndex).pos.y)
             Hit = RandomNumber(Hechizos(h2).MinHp, Hechizos(h2).MaxHp)
             Hit = Hit + Porcentaje(Hit, 3 * UserList(UserIndex).Stats.ELV)
             ' Daño mágico arma
@@ -3921,34 +3940,25 @@ Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y 
             If UserList(UserIndex).invent.EquippedRingAccesoryObjIndex > 0 Then
                 Hit = Hit + Porcentaje(Hit, ObjData(UserList(UserIndex).invent.EquippedRingAccesoryObjIndex).MagicDamageBonus)
             End If
-            ' Disminuir daño con distancia
-            If tilDif <> 0 Then
-                porcentajeDesc = Abs(tilDif) * 20
-                Damage = Hit / 100 * porcentajeDesc
-                Damage = Hit - Damage
-            Else
-                Damage = Hit
-            End If
+            Damage = ApplyAreaSpellFalloff(Hit, tilDif)
             ' Si el hechizo no ignora la RM
             If Hechizos(h2).AntiRm = 0 Then
                 Damage = Damage - NpcList(NpcIndex).Stats.defM
             End If
             ' Prevengo daño negativo
             If Damage < 0 Then Damage = 0
+            Call NPCAtacado(NpcIndex, UserIndex, True)
             Call NPCs.DoDamageOrHeal(NpcIndex, UserIndex, eUser, -Damage, e_DamageSourceType.e_magic, h2)
-            If UserList(UserIndex).ChatCombate = 1 Then
-                Call WriteLocaleMsg(UserIndex, MSG_HAS_CAUSADO_PUNTOS_DANO, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_PROMEDIO_MAYOR, Damage & "¬" & NpcList(NpcIndex).name) ' Msg1921=Le has causado ¬1 puntos de daño a ¬2.
-            End If
+            AreaHechizo = True
         End If
-        Exit Sub
+        Exit Function
     Else
-        TilesDifNpc = UserList(NpcIndex).pos.x + UserList(NpcIndex).pos.y
-        tilDif = TilesDifUser - TilesDifNpc
+        tilDif = AreaSpellTileDistance(x, y, UserList(NpcIndex).pos.x, UserList(NpcIndex).pos.y)
         If IsSet(Hechizos(h2).Effects, e_SpellEffects.eDoDamage) Then
             If UserIndex = NpcIndex Then
-                Exit Sub
+                Exit Function
             End If
-            If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Sub
+            If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Function
             If UserIndex <> NpcIndex Then
                 Call UsuarioAtacadoPorUsuario(UserIndex, NpcIndex)
             End If
@@ -3962,13 +3972,7 @@ Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y 
             If UserList(UserIndex).invent.EquippedRingAccesoryObjIndex > 0 Then
                 Hit = Hit + Porcentaje(Hit, ObjData(UserList(UserIndex).invent.EquippedRingAccesoryObjIndex).MagicDamageBonus)
             End If
-            If tilDif <> 0 Then
-                porcentajeDesc = Abs(tilDif) * 20
-                Damage = Hit / 100 * porcentajeDesc
-                Damage = Hit - Damage
-            Else
-                Damage = Hit
-            End If
+            Damage = ApplyAreaSpellFalloff(Hit, tilDif)
             ' Si el hechizo no ignora la RM
             If Hechizos(h2).AntiRm = 0 Then
                 ' Resistencia mágica armadura
@@ -3999,19 +4003,13 @@ Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y 
         If IsSet(Hechizos(h2).Effects, e_SpellEffects.eDoHeal) Then
             If Not PeleaSegura(UserIndex, NpcIndex) Then
                 If Status(UserIndex) = 1 And Status(NpcIndex) <> 1 Then
-                    Exit Sub
+                    Exit Function
                 End If
             End If
             Hit = RandomNumber(Hechizos(h2).MinHp, Hechizos(h2).MaxHp)
-            If tilDif <> 0 Then
-                porcentajeDesc = Abs(tilDif) * 20
-                Damage = Hit / 100 * porcentajeDesc
-                Damage = Hit - Damage
-            Else
-                Damage = Hit
-            End If
+            Damage = ApplyAreaSpellFalloff(Hit, tilDif)
             Damage = Damage * UserMod.GetMagicHealingBonus(UserList(UserIndex))
-            Damage = Damage * NPCs.GetSelfHealingBonus(NpcList(NpcIndex))
+            Damage = Damage * UserMod.GetSelfHealingBonus(UserList(NpcIndex))
             Call UserMod.DoDamageOrHeal(NpcIndex, UserIndex, eUser, Damage, e_DamageSourceType.e_magic, h2)
             If UserIndex <> NpcIndex Then
                 Call WriteLocaleMsg(UserIndex, MSG_HAS_RESTAURADO_PUNTOS_VIDA_1922, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_PROMEDIO_MAYOR, Damage & "¬" & UserList(NpcIndex).name) ' Msg1922=Le has restaurado ¬1 puntos de vida a ¬2.
@@ -4024,9 +4022,9 @@ Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y 
     End If
     If Hechizos(h2).Envenena > 0 Then
         If UserIndex = NpcIndex Then
-            Exit Sub
+            Exit Function
         End If
-        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Sub
+        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Function
         If UserIndex <> NpcIndex Then
             Call UsuarioAtacadoPorUsuario(UserIndex, NpcIndex)
         End If
@@ -4035,9 +4033,9 @@ Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y 
     End If
     If IsSet(Hechizos(h2).Effects, e_SpellEffects.Paralize) Then
         If UserIndex = NpcIndex Then
-            Exit Sub
+            Exit Function
         End If
-        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Sub
+        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Function
         If UserIndex <> NpcIndex Then
             Call UsuarioAtacadoPorUsuario(UserIndex, NpcIndex)
         End If
@@ -4051,9 +4049,9 @@ Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y 
     End If
     If IsSet(Hechizos(h2).Effects, e_SpellEffects.Immobilize) Then
         If UserIndex = NpcIndex Then
-            Exit Sub
+            Exit Function
         End If
-        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Sub
+        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Function
         If UserIndex <> NpcIndex Then
             Call UsuarioAtacadoPorUsuario(UserIndex, NpcIndex)
         End If
@@ -4068,9 +4066,9 @@ Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y 
     End If
     If IsSet(Hechizos(h2).Effects, e_SpellEffects.Blindness) Then
         If UserIndex = NpcIndex Then
-            Exit Sub
+            Exit Function
         End If
-        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Sub
+        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Function
         If UserIndex <> NpcIndex Then
             Call UsuarioAtacadoPorUsuario(UserIndex, NpcIndex)
         End If
@@ -4082,9 +4080,9 @@ Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y 
     End If
     If Hechizos(h2).velocidad > 0 Then
         If UserIndex = NpcIndex Then
-            Exit Sub
+            Exit Function
         End If
-        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Sub
+        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Function
         If UserIndex <> NpcIndex Then
             Call UsuarioAtacadoPorUsuario(UserIndex, NpcIndex)
         End If
@@ -4096,9 +4094,9 @@ Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y 
     End If
     If IsSet(Hechizos(h2).Effects, e_SpellEffects.Curse) Then
         If UserIndex = NpcIndex Then
-            Exit Sub
+            Exit Function
         End If
-        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Sub
+        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Function
         If UserIndex <> NpcIndex Then
             Call UsuarioAtacadoPorUsuario(UserIndex, NpcIndex)
         End If
@@ -4119,9 +4117,9 @@ Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y 
     End If
     If IsSet(Hechizos(h2).Effects, e_SpellEffects.Incinerate) Then
         If UserIndex = NpcIndex Then
-            Exit Sub
+            Exit Function
         End If
-        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Sub
+        If Not PuedeAtacar(UserIndex, NpcIndex) Then Exit Function
         If UserIndex <> NpcIndex Then
             Call UsuarioAtacadoPorUsuario(UserIndex, NpcIndex)
         End If
@@ -4205,10 +4203,30 @@ Private Sub AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byte, y 
             UserList(NpcIndex).Counters.Maldicion = 0
         End If
     End If
-    Exit Sub
+    AreaHechizo = True
+    Exit Function
 AreaHechizo_Err:
     Call TraceError(Err.Number, Err.Description, "modHechizos.AreaHechizo", Erl)
-End Sub
+End Function
+
+Private Function AreaSpellTileDistance(ByVal CenterX As Integer, ByVal CenterY As Integer, ByVal TargetX As Integer, ByVal TargetY As Integer) As Integer
+    On Error GoTo AreaSpellTileDistance_Err
+    AreaSpellTileDistance = Abs(TargetX - CenterX) + Abs(TargetY - CenterY)
+    Exit Function
+AreaSpellTileDistance_Err:
+    Call TraceError(Err.Number, Err.Description, "modHechizos.AreaSpellTileDistance", Erl)
+End Function
+
+Private Function ApplyAreaSpellFalloff(ByVal BaseAmount As Integer, ByVal TilesFromCenter As Integer) As Integer
+    On Error GoTo ApplyAreaSpellFalloff_Err
+    Dim reductionPercent As Integer
+    reductionPercent = TilesFromCenter * AREA_SPELL_FALLOFF_PER_TILE
+    If reductionPercent > PERCENT_BASE Then reductionPercent = PERCENT_BASE
+    ApplyAreaSpellFalloff = BaseAmount - CInt(BaseAmount / PERCENT_BASE * reductionPercent)
+    Exit Function
+ApplyAreaSpellFalloff_Err:
+    Call TraceError(Err.Number, Err.Description, "modHechizos.ApplyAreaSpellFalloff", Erl)
+End Function
 
 Public Sub AdjustNpcStatWithCasterLevel(ByVal UserIndex As Integer, ByVal NpcIndex As Integer)
     Dim BaseHit       As Integer
