@@ -1281,6 +1281,16 @@ Public Enum e_TipoHechizo
     uPhysicalSkill = 10
 End Enum
 
+' <<<<<< Hechizos de area >>>>>>
+Public Enum e_AreaAfecta
+    eAreaAfectaUsuarios = 1
+    eAreaAfectaNpcs = 2
+    eAreaAfectaAmbos = 3
+End Enum
+
+Public Const AREA_SPELL_FALLOFF_PER_TILE As Integer = 20  ' % de reduccion por tile de distancia al centro
+Public Const PERCENT_BASE                As Integer = 100
+
 Public Const MAX_MENSAJES_FORO   As Byte = 35
 Public Const MAXUSERHECHIZOS     As Byte = 40
 
