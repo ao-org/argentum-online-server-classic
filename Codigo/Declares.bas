@@ -2191,12 +2191,20 @@ Public Enum e_EquipoReto
     Derecha
 End Enum
 
+Public Enum e_FaseReto
+    Inactiva
+    EnJuego
+    Finalizando
+    DepositoItems
+End Enum
+
 Public Type t_SalaReto
     PosIzquierda As t_WorldPos
     PosDerecha As t_WorldPos
-    IndexBanquero As Integer
+    Banquero As t_NpcReference
     ' -----------------
     EnUso As Boolean
+    Fase As e_FaseReto
     Ronda As Byte
     Puntaje As Integer
     Apuesta As Long
