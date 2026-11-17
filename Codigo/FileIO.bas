@@ -2062,9 +2062,8 @@ End Sub
 Sub LoadFeatureToggles()
     On Error GoTo LoadFeatureToggles_Err
     Dim Lector   As clsIniManager
-    Dim Temporal As Long
     Set FeatureToggles = New Dictionary
-    If Not FileExist("feature_toggle.ini") Then
+    If Not FileExist(iniPath & "feature_toggle.ini") Then
         Exit Sub
     End If
     If frmMain.Visible Then frmMain.txStatus.Caption = "Cargando info de feature toggles."
@@ -2905,7 +2904,7 @@ Public Sub CargarDonadores()
     End If
 End Sub
 
-Public Function IsFeatureEnabled(ByVal featureName As String)
+Public Function IsFeatureEnabled(ByVal featureName As String) As Boolean
     If FeatureToggles.Exists(featureName) Then
         IsFeatureEnabled = FeatureToggles.Item(featureName)
     Else
