@@ -472,6 +472,33 @@ LoadBlockedWordsDescription_Err:
     Call TraceError(Err.Number, Err.Description, "ES.LoadBlockedWordsDescription", Erl)
 End Sub
 
+Public Sub LoadBlockedWordsGlobalChat()
+    On Error GoTo LoadBlockedWordsGlobalChat_Err
+    Dim filePath   As String
+    Dim wordCount  As Integer
+    Dim fileNumber As Integer
+    Dim wordIndex  As Integer
+    
+    filePath = DatPath & BLOCKED_WORDS_GLOBAL_CHAT_FILE
+    wordCount = TxtDimension(filePath)
+    If wordCount = 0 Then
+        ReDim BlockedWordsGlobalChat(0)
+        Exit Sub
+    End If
+    ReDim BlockedWordsGlobalChat(1 To wordCount)
+    fileNumber = FreeFile(1)
+    Open filePath For Input As #fileNumber
+    For wordIndex = LBound(BlockedWordsGlobalChat) To UBound(BlockedWordsGlobalChat)
+        Line Input #fileNumber, BlockedWordsGlobalChat(wordIndex)
+        BlockedWordsGlobalChat(wordIndex) = LCase$(BlockedWordsGlobalChat(wordIndex))
+    Next wordIndex
+    Close fileNumber
+    Exit Sub
+LoadBlockedWordsGlobalChat_Err:
+    If fileNumber <> 0 Then Close fileNumber
+    Call TraceError(Err.Number, Err.Description, "ES.LoadBlockedWordsGlobalChat", Erl)
+End Sub
+
 Public Sub CargarHechizos()
     '###################################################
     '#               ATENCION PELIGRO                  #
