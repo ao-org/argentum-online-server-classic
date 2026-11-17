@@ -172,14 +172,34 @@ Public Function RefDoDamageToTarget(ByRef SourceRef As t_AnyReference, _
                                     ByVal Damage As Integer, _
                                     ByVal DamageType As e_DamageSourceType, _
                                     ByVal ObjIndex As Integer) As e_DamageResult
+    On Error GoTo RefDoDamageToTarget_Err
+    Dim TargetHpBefore As Long
+    Dim DamageDealt    As Long
     If Not IsValidRef(SourceRef) Then
         Exit Function
     End If
     If SourceRef.RefType = eNpc Then
         RefDoDamageToTarget = NpcDoDamageToTarget(SourceRef.ArrayIndex, TargetRef, Damage, DamageType, ObjIndex)
     ElseIf SourceRef.RefType = eUser Then
+        If TargetRef.RefType = eNpc Then
+            TargetHpBefore = NpcList(TargetRef.ArrayIndex).Stats.MinHp
+        End If
         RefDoDamageToTarget = DoDamageToTarget(SourceRef.ArrayIndex, TargetRef, Damage, DamageType, ObjIndex)
+        ' Avisamos al dueño si un jugador dañó a su mascota
+        If TargetRef.RefType = eNpc Then
+            If NpcList(TargetRef.ArrayIndex).MaestroUser.ArrayIndex <> SourceRef.ArrayIndex Then
+                If RefDoDamageToTarget = eDead Then
+                    DamageDealt = TargetHpBefore
+                Else
+                    DamageDealt = TargetHpBefore - NpcList(TargetRef.ArrayIndex).Stats.MinHp
+                End If
+                Call SistemaCombate.NotifyPetOwnerOfDamage(TargetRef.ArrayIndex, UserList(SourceRef.ArrayIndex).name, DamageDealt)
+            End If
+        End If
     End If
+    Exit Function
+RefDoDamageToTarget_Err:
+    Call TraceError(Err.Number, Err.Description, "RefDoDamageToTarget", Erl)
 End Function
 
 Public Function AddShieldToReference(ByRef SourceRef As t_AnyReference, ByVal ShieldSize As Long)

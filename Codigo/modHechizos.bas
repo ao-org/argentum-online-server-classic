@@ -281,6 +281,9 @@ Sub NpcLanzaSpellSobreNpc(ByVal NpcIndex As Integer, ByVal TargetNPC As Integer,
             Damage = Damage * NPCs.GetMagicDamageReduction(NpcList(TargetNPC))
             Call SendData(SendTarget.ToNPCAliveArea, TargetNPC, PrepareMessagePlayWave(Hechizos(Spell).wav, .pos.x, .pos.y))
             Call SendData(SendTarget.ToNPCAliveArea, TargetNPC, PrepareMessageCreateFX(.Char.charindex, Hechizos(Spell).FXgrh, Hechizos(Spell).loops))
+            If NpcList(NpcIndex).MaestroUser.ArrayIndex <> .MaestroUser.ArrayIndex Then
+                Call SistemaCombate.NotifyPetOwnerOfDamage(TargetNPC, NpcList(NpcIndex).name, Damage)
+            End If
             IsAlive = NPCs.DoDamageOrHeal(TargetNPC, NpcIndex, eNpc, -Damage, e_DamageSourceType.e_magic, Spell) = eStillAlive
             If .npcType = DummyTarget Then
                 Call DummyTargetAttacked(TargetNPC)
@@ -2475,6 +2478,9 @@ Sub HechizoPropNPC(ByVal hIndex As Integer, ByVal NpcIndex As Integer, ByVal Use
             Call CalculateElementalTagsModifiers(UserIndex, NpcIndex, Damage)
         End If
         Call InfoHechizo(UserIndex)
+        If NpcList(NpcIndex).MaestroUser.ArrayIndex <> UserIndex Then
+            Call SistemaCombate.NotifyPetOwnerOfDamage(NpcIndex, UserList(UserIndex).name, Damage)
+        End If
         IsAlive = NPCs.DoDamageOrHeal(NpcIndex, UserIndex, eUser, -Damage, e_DamageSourceType.e_magic, hIndex) = eStillAlive
         If NpcList(NpcIndex).npcType = DummyTarget Then
             Call DummyTargetAttacked(NpcIndex)
@@ -3948,6 +3954,9 @@ Private Function AreaHechizo(UserIndex As Integer, NpcIndex As Integer, x As Byt
             ' Prevengo daño negativo
             If Damage < 0 Then Damage = 0
             Call NPCAtacado(NpcIndex, UserIndex, True)
+            If NpcList(NpcIndex).MaestroUser.ArrayIndex <> UserIndex Then
+                Call SistemaCombate.NotifyPetOwnerOfDamage(NpcIndex, UserList(UserIndex).name, Damage)
+            End If
             Call NPCs.DoDamageOrHeal(NpcIndex, UserIndex, eUser, -Damage, e_DamageSourceType.e_magic, h2)
             AreaHechizo = True
         End If
