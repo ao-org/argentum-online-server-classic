@@ -841,6 +841,8 @@ Public Sub UsuarioAtacaNpc(ByVal UserIndex As Integer, ByVal NpcIndex As Integer
         Exit Sub
     End If
     Call AllMascotasAtacanNPC(NpcIndex, UserIndex)
+    ' Msg654=Pierdes el efecto del mimetismo.
+    Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
     If UserList(UserIndex).flags.invisible = 0 Then Call NPCAtacado(NpcIndex, UserIndex)
     Call EffectsOverTime.TargetWillAttack(UserList(UserIndex).EffectOverTime, NpcIndex, eNpc, e_phisical)
     If UserImpactoNpc(UserIndex, NpcIndex, aType) Then
@@ -875,10 +877,6 @@ Public Sub UsuarioAtacaNpc(ByVal UserIndex As Integer, ByVal NpcIndex As Integer
         If Not IsSet(NpcList(NpcIndex).flags.StatusMask, eTaunted) And (Not IsValidUserRef(NpcList(NpcIndex).TargetUser) Or NpcList(NpcIndex).TargetUser.ArrayIndex <> UserIndex) _
                 Then
             Call SetUserRef(NpcList(NpcIndex).TargetUser, UserIndex)
-        End If
-        ' Si te mimetizaste en forma de bicho y le pegas al chobi, el chobi te va a pegar.
-        If UserList(UserIndex).flags.Mimetizado = e_EstadoMimetismo.FormaBicho Then
-            UserList(UserIndex).flags.Mimetizado = e_EstadoMimetismo.FormaBichoSinProteccion
         End If
         ' Resta la vida del NPC
         Call UserDamageNpc(UserIndex, NpcIndex, aType)

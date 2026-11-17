@@ -1570,8 +1570,11 @@ Sub HechizoEstadoUsuario(ByVal UserIndex As Integer, ByRef b As Boolean)
         If UserList(targetUserIndex).Counters.Invisibilidad <= 0 Then UserList(targetUserIndex).Counters.Invisibilidad = RandomNumber(Hechizos(h).Duration - 4, Hechizos( _
                 h).Duration + 1)
         Call WriteContadores(targetUserIndex)
+        Call WriteContadores(targetUserIndex)
         Call SendData(SendTarget.ToPCArea, targetUserIndex, PrepareMessageSetInvisible(UserList(targetUserIndex).Char.charindex, True, UserList(targetUserIndex).pos.x, UserList( _
                 targetUserIndex).pos.y))
+        ' Msg654=Pierdes el efecto del mimetismo.
+        Call EndMimetism(targetUserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
         Call InfoHechizo(UserIndex)
         b = True
     End If
@@ -3538,6 +3541,8 @@ Sub HechizoCombinados(ByVal UserIndex As Integer, ByRef b As Boolean, ByRef IsAl
         If UserList(tU).Counters.Invisibilidad <= 0 Then UserList(tU).Counters.Invisibilidad = Hechizos(h).Duration
         Call WriteContadores(tU)
         Call SendData(SendTarget.ToPCAliveArea, tU, PrepareMessageSetInvisible(UserList(tU).Char.charindex, True, UserList(tU).pos.x, UserList(tU).pos.y))
+        ' Msg654=Pierdes el efecto del mimetismo.
+        Call EndMimetism(tU, MSG_PIERDES_EFECTO_MIMETISMO)
         enviarInfoHechizo = True
         b = True
     End If

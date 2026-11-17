@@ -1366,6 +1366,7 @@ Private Function EsObjetivoValido(ByVal NpcIndex As Integer, ByVal UserIndex As 
     EsObjetivoValido = EsObjetivoValido And EsEnemigo(NpcIndex, UserIndex)
     EsObjetivoValido = EsObjetivoValido And UserList(UserIndex).flags.Muerto = 0
     EsObjetivoValido = EsObjetivoValido And UserList(UserIndex).flags.EnConsulta = 0
+    EsObjetivoValido = EsObjetivoValido And UserList(UserIndex).flags.Mimetizado <> e_EstadoMimetismo.FormaBicho
     Dim EsAdmin As Boolean: EsAdmin = EsGM(UserIndex) And Not UserList(UserIndex).flags.AdminPerseguible
     EsObjetivoValido = EsObjetivoValido And Not EsAdmin
 End Function
