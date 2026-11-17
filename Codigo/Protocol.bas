@@ -4622,7 +4622,7 @@ Private Sub HandlePetFollowAll(ByVal UserIndex As Integer)
         End If
         Dim i As Integer
         Dim NpcIndex As Integer
-        For i = 1 To MAXMASCOTAS
+        For i = 1 To MAX_SLOTS_MASCOTAS
             If IsValidNpcRef(.MascotasIndex(i)) Then
                 NpcIndex = .MascotasIndex(i).ArrayIndex
                 If NpcList(NpcIndex).flags.NPCActive Then
@@ -7431,36 +7431,77 @@ End Sub
 
 Public Sub HandleQuestAccept(ByVal UserIndex As Integer)
     On Error GoTo HandleQuestAccept_Err
-    '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-    'Maneja el evento de aceptar una quest.
-    'Last modified: 31/01/2010 by Amraphen
-    '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-    Dim NpcIndex  As Integer
-    Dim QuestSlot As Byte
-    Dim Indice    As Byte
-    Dim tmpIndex  As Integer
+    Dim NpcIndex   As Integer
+    Dim QuestSlot  As Byte
+    Dim Indice     As Byte
+    Dim tmpIndex   As Integer
+    Dim tmpQuest   As t_Quest
+    Dim OpenByObj  As Boolean
+    Dim validCount As Integer
+    Dim k          As Integer
+
     Indice = reader.ReadInt8
-    If Not IsValidNpcRef(UserList(UserIndex).flags.TargetNPC) And UserList(UserIndex).flags.QuestOpenByObj = False Then Exit Sub
-    NpcIndex = UserList(UserIndex).flags.TargetNPC.ArrayIndex
-    Dim tmpQuest As t_Quest
-    'npc or item quest
-    If NpcIndex > 0 Then
-        'npc handled quest
-        tmpQuest = QuestList(NpcList(NpcIndex).QuestNumber(Indice))
-        tmpIndex = NpcList(NpcIndex).QuestNumber(Indice)
-    Else
-        'item handled quest
+
+    OpenByObj = UserList(UserIndex).flags.QuestOpenByObj
+    UserList(UserIndex).flags.QuestOpenByObj = False
+
+    If OpenByObj Then
+        'Quest por objeto: se ignora el TargetNPC
+        NpcIndex = 0
         tmpIndex = UserList(UserIndex).flags.QuestNumber
-        tmpQuest = QuestList(tmpIndex)
+
+        'El objeto tiene que seguir en el slot y corresponder a esta quest
+        Dim itemSlot As Byte
+        itemSlot = UserList(UserIndex).flags.QuestItemSlot
+
+        If itemSlot < 1 Or itemSlot > MAX_INVENTORY_SLOTS Then Exit Sub
+
+        With UserList(UserIndex).invent.Object(itemSlot)
+            If .ObjIndex <= 0 Or .Amount <= 0 Then Exit Sub
+            If ObjData(.ObjIndex).OBJType <> e_OBJType.OtQuest Then Exit Sub
+            If ObjData(.ObjIndex).QuestId <> tmpIndex Then Exit Sub
+        End With
+    Else
+        'Quest por NPC
+        If Not IsValidNpcRef(UserList(UserIndex).flags.TargetNPC) Then Exit Sub
+        NpcIndex = UserList(UserIndex).flags.TargetNPC.ArrayIndex
+        If NpcIndex <= 0 Then Exit Sub
+
+        'Indice es la posicion en la lista filtrada que se envio al cliente
+        tmpIndex = 0
+        validCount = 0
+        For k = 1 To NpcList(NpcIndex).NumQuest
+            If IsQuestIndexValid(NpcList(NpcIndex).QuestNumber(k)) Then
+                validCount = validCount + 1
+                If validCount = Indice Then
+                    tmpIndex = NpcList(NpcIndex).QuestNumber(k)
+                    Exit For
+                End If
+            End If
+        Next k
+
+        If tmpIndex = 0 Then Exit Sub
     End If
+
+    If tmpIndex < LBound(QuestList) Or tmpIndex > UBound(QuestList) Then
+        Call TraceError(0, "QuestNumber invalido: " & tmpIndex, "Protocol.HandleQuestAccept", 0)
+        Exit Sub
+    End If
+
+    tmpQuest = QuestList(tmpIndex)
+
     If Not ModQuest.CanUserAcceptQuest(UserIndex, NpcIndex, tmpIndex, tmpQuest) Then
         Exit Sub
     End If
+
     QuestSlot = FreeQuestSlot(UserIndex)
     If QuestSlot = 0 Then
-        Call WriteLocaleChatOverHead(UserIndex, MSG_DEBES_COMPLETAR_LAS_MISIONES_EN_CURSO_PARA_PODER_ACEPTAR_MAS_MISIONES, vbNullString, NpcList(NpcIndex).Char.charindex, vbYellow)  ' Msg1417=Debes completar las misiones en curso para poder aceptar más misiones.
+        If NpcIndex > 0 Then
+            Call WriteLocaleChatOverHead(UserIndex, MSG_DEBES_COMPLETAR_LAS_MISIONES_EN_CURSO_PARA_PODER_ACEPTAR_MAS_MISIONES, vbNullString, NpcList(NpcIndex).Char.charindex, vbYellow)  ' Msg1417=Debes completar las misiones en curso para poder aceptar más misiones.
+        End If
         Exit Sub
     End If
+
     'Agregamos la quest.
     With UserList(UserIndex).QuestStats.Quests(QuestSlot)
         .QuestIndex = tmpIndex
@@ -7552,6 +7593,7 @@ Private Sub HandleConsulta(ByVal UserIndex As Integer)
     'Habilita/Deshabilita el modo consulta.
     'Agrego validaciones.
     'No se hace visible en los clientes si estaba navegando (porque ya lo estaba).
+    On Error GoTo ErrHandler
     Dim UserConsulta As t_UserReference
     With UserList(UserIndex)
         Dim Nick As String
@@ -7567,7 +7609,9 @@ Private Sub HandleConsulta(ByVal UserIndex As Integer)
                 Exit Sub
             End If
             'Si el gm es Consejero y el usuario esta en zona insegura, no puede ir
-            If e_PlayerType.Consejero And MapInfo(UserList(UserConsulta.ArrayIndex).pos.Map).Seguro = 0 Then
+            If (.flags.Privilegios And e_PlayerType.Consejero) <> 0 And _
+                (.flags.Privilegios And (e_PlayerType.SemiDios Or e_PlayerType.Dios Or e_PlayerType.Admin)) = 0 And _
+                MapInfo(UserList(UserConsulta.ArrayIndex).pos.map).Seguro = 0 Then
                 'Msg2165=El usuario ¬1 se encuentra en zona insegura, no puedes acercarte a él.
                 Call WriteLocaleMsg(UserIndex, MSG_NO_USUARIO_ENCUENTRA_ZONA_INSEGURA_PUEDES_ACERCARTE, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja, Nick)
                 Exit Sub
@@ -7575,7 +7619,7 @@ Private Sub HandleConsulta(ByVal UserIndex As Integer)
         Else
             Call SetUserRef(UserConsulta, .flags.TargetUser.ArrayIndex)
             'Se asegura que el target exista
-            If IsValidUserRef(UserConsulta) Then
+            If Not IsValidUserRef(UserConsulta) Then
                 'Msg1266= Primero tienes que seleccionar un usuario, haz click izquierdo sobre el.
                 Call WriteLocaleMsg(UserIndex, MSG_PRIMERO_TIENES_SELECCIONAR_USUARIO_HAZ_CLICK_IZQUIERDO_SOBRE, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
                 Exit Sub
@@ -8095,7 +8139,7 @@ Private Sub HandlePetLeaveAll(ByVal UserIndex As Integer)
     On Error GoTo ErrHandler
     With UserList(UserIndex)
         Dim AlmenosUna As Boolean, i As Integer
-        For i = 1 To MAXMASCOTAS
+        For i = 1 To MAX_SLOTS_MASCOTAS
             If IsValidNpcRef(.MascotasIndex(i)) Then
                 If NpcList(.MascotasIndex(i).ArrayIndex).flags.NPCActive Then
                     Call QuitarNPC(.MascotasIndex(i).ArrayIndex, e_DeleteSource.ePetLeave)

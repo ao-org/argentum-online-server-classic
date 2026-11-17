@@ -1021,7 +1021,8 @@ Sub MakeUserChar(ByVal toMap As Boolean, _
             'Send make character command to clients
             Dim klan       As String
             Dim clan_nivel As Byte
-            If Not toMap Then
+            Dim clanAlineacion As Byte
+            If Not ToMap Then
                 displayName = GetUserDisplayNameOrReal(UserIndex)
                 If .showName Then
                     If .flags.Mimetizado = e_EstadoMimetismo.Desactivado Then
@@ -1029,10 +1030,12 @@ Sub MakeUserChar(ByVal toMap As Boolean, _
                         If .GuildIndex > 0 Then
                             klan = modGuilds.GuildName(.GuildIndex)
                             clan_nivel = modGuilds.NivelDeClan(.GuildIndex)
+                            clanAlineacion = GuildAlignmentIndex(.GuildIndex)
                             TempName = displayName & " {" & aliasValue & "}" & " <" & klan & ">"
                         Else
                             klan = vbNullString
                             clan_nivel = 0
+                            clanAlineacion = e_ALINEACION_GUILD.ALINEACION_NEUTRAL
                             If .flags.EnConsulta Then
                                 TempName = displayName & " [CONSULTA]" & " {" & aliasValue & "}"
                             Else
@@ -1047,7 +1050,7 @@ Sub MakeUserChar(ByVal toMap As Boolean, _
                         .Char.BackpackAnim, .Char.FX, 999, .Char.CascoAnim, TempName, .Faccion.Status, .flags.Privilegios, .Char.ParticulaFx, .Char.Head_Aura, .Char.Arma_Aura, _
                         .Char.Body_Aura, .Char.DM_Aura, .Char.RM_Aura, .Char.Otra_Aura, .Char.Escudo_Aura, .Char.speeding, 0, appear, .Grupo.Lider.ArrayIndex, .GuildIndex, _
                         clan_nivel, .Stats.MinHp, .Stats.MaxHp, .Stats.MinMAN, .Stats.MaxMAN, 0, False, .flags.Navegando, .Stats.tipoUsuario, .flags.CurrentTeam, _
-                        .flags.tiene_bandera)
+                        .flags.tiene_bandera, clanAlineacion:=clanAlineacion)
             Else
                 'Hide the name and clan - set privs as normal user
                 Call AgregarUser(UserIndex, .pos.Map, appear)
@@ -2422,33 +2425,29 @@ Private Sub WarpMascotas(ByVal UserIndex As Integer)
     Dim PermiteMascotas  As Boolean
     Dim Index            As Integer
     Dim iMinHP           As Integer
-    Dim PetTiempoDeVida  As Integer
     Dim MascotaQuitada   As Boolean
     Dim ElementalQuitado As Boolean
     Dim SpawnInvalido    As Boolean
+    Dim SpawnPos         As t_WorldPos
     PermiteMascotas = MapInfo(UserList(UserIndex).pos.Map).NoMascotas = False
+
+    ' Mascotas domadas
     For i = 1 To MAXMASCOTAS
         Index = UserList(UserIndex).MascotasIndex(i).ArrayIndex
         If IsValidNpcRef(UserList(UserIndex).MascotasIndex(i)) Then
             iMinHP = NpcList(Index).Stats.MinHp
-            PetTiempoDeVida = NpcList(Index).Contadores.TiempoExistencia
             Call SetUserRef(NpcList(Index).MaestroUser, 0)
             Call QuitarNPC(Index, eRemoveWarpPets)
-            If PetTiempoDeVida > 0 Then
-                Call QuitarMascota(UserIndex, Index)
-                ElementalQuitado = True
-            ElseIf Not PermiteMascotas Then
+            If Not PermiteMascotas Then
                 Call ClearNpcRef(UserList(UserIndex).MascotasIndex(i))
                 MascotaQuitada = True
             End If
         Else
             Call ClearNpcRef(UserList(UserIndex).MascotasIndex(i))
             iMinHP = 0
-            PetTiempoDeVida = 0
         End If
         petType = UserList(UserIndex).MascotasType(i)
-        If petType > 0 And PermiteMascotas And (UserList(UserIndex).flags.MascotasGuardadas = 0 Or UserList(UserIndex).MascotasIndex(i).ArrayIndex > 0) And PetTiempoDeVida = 0 Then
-            Dim SpawnPos As t_WorldPos
+        If petType > 0 And PermiteMascotas And (UserList(UserIndex).flags.MascotasGuardadas = 0 Or UserList(UserIndex).MascotasIndex(i).ArrayIndex > 0) Then
             SpawnPos.Map = UserList(UserIndex).pos.Map
             SpawnPos.x = UserList(UserIndex).pos.x + RandomNumber(-3, 3)
             SpawnPos.y = UserList(UserIndex).pos.y + RandomNumber(-3, 3)
@@ -2467,6 +2466,12 @@ Private Sub WarpMascotas(ByVal UserIndex As Integer)
             End If
         End If
     Next i
+
+    ' Invocaciones: acompañan al dueño conservando su estado
+    For i = MAXMASCOTAS + 1 To MAX_SLOTS_MASCOTAS
+        Call WarpInvocacion(UserIndex, i, PermiteMascotas, ElementalQuitado, SpawnInvalido)
+    Next i
+
     If MascotaQuitada Then
         If Not PermiteMascotas Then
             ' Msg582=Una fuerza superior impide que tus mascotas entren en este mapa. Estas te esperarán afuera.
@@ -2482,6 +2487,102 @@ Private Sub WarpMascotas(ByVal UserIndex As Integer)
     Exit Sub
 WarpMascotas_Err:
     Call TraceError(Err.Number, Err.Description, "UsUaRiOs.WarpMascotas", Erl)
+End Sub
+
+''
+' Traslada una invocación junto a su dueño al cambiar de mapa.
+' Conserva vida, tiempo de existencia restante y stats de combate (no vuelve a aplicar
+' AdjustNpcStatWithCasterLevel, para que no acumule bonus en cada cambio de mapa).
+' Si el mapa no permite mascotas o el spawn falla, la invocación se pierde y se libera el slot.
+'
+' @param UserIndex        Dueño de la invocación.
+' @param slotIndex        Slot de invocación (MAXMASCOTAS + 1 .. MAX_SLOTS_MASCOTAS).
+' @param PermiteMascotas  Si el mapa destino permite mascotas.
+' @param ElementalQuitado Se marca en True si la invocación se perdió por el mapa.
+' @param SpawnInvalido    Se marca en True si la invocación no pudo spawnear.
+'
+Private Sub WarpInvocacion(ByVal UserIndex As Integer, ByVal slotIndex As Integer, ByVal PermiteMascotas As Boolean, _
+                           ByRef ElementalQuitado As Boolean, ByRef SpawnInvalido As Boolean)
+    On Error GoTo WarpInvocacion_Err
+
+    Dim oldNpcIndex    As Integer
+    Dim newNpcIndex    As Integer
+    Dim petType        As Integer
+    Dim vidaActual     As Long
+    Dim tiempoRestante As Long
+    Dim poderAtaque    As Long
+    Dim minHit         As Long
+    Dim maxHit         As Long
+    Dim SpawnPos       As t_WorldPos
+
+    ' Referencia rota: si quedó un type residual, se limpia el slot
+    If Not IsValidNpcRef(UserList(UserIndex).MascotasIndex(slotIndex)) Then
+        Call ClearNpcRef(UserList(UserIndex).MascotasIndex(slotIndex))
+        If UserList(UserIndex).MascotasType(slotIndex) > 0 Then
+            Call LiberarSlotInvocacion(UserIndex, slotIndex)
+        End If
+        Exit Sub
+    End If
+
+    oldNpcIndex = UserList(UserIndex).MascotasIndex(slotIndex).ArrayIndex
+    petType = UserList(UserIndex).MascotasType(slotIndex)
+    vidaActual = NpcList(oldNpcIndex).Stats.MinHp
+    tiempoRestante = NpcList(oldNpcIndex).Contadores.TiempoExistencia
+    poderAtaque = NpcList(oldNpcIndex).poderAtaque
+    minHit = NpcList(oldNpcIndex).Stats.minHit
+    maxHit = NpcList(oldNpcIndex).Stats.maxHit
+
+    ' Sin MaestroUser, QuitarNPC no pasa por QuitarMascota: el slot se maneja acá
+    Call SetUserRef(NpcList(oldNpcIndex).MaestroUser, 0)
+    Call QuitarNPC(oldNpcIndex, eRemoveWarpPets)
+
+    If Not PermiteMascotas Then
+        Call LiberarSlotInvocacion(UserIndex, slotIndex)
+        ElementalQuitado = True
+        Exit Sub
+    End If
+
+    SpawnPos.map = UserList(UserIndex).pos.map
+    SpawnPos.x = UserList(UserIndex).pos.x + RandomNumber(-3, 3)
+    SpawnPos.y = UserList(UserIndex).pos.y + RandomNumber(-3, 3)
+    newNpcIndex = SpawnNpc(petType, SpawnPos, False, False, False, UserIndex)
+
+    If newNpcIndex <= 0 Then
+        Call LiberarSlotInvocacion(UserIndex, slotIndex)
+        SpawnInvalido = True
+        Exit Sub
+    End If
+
+    Call SetNpcRef(UserList(UserIndex).MascotasIndex(slotIndex), newNpcIndex)
+
+    If vidaActual > 0 Then NpcList(newNpcIndex).Stats.MinHp = vidaActual
+    NpcList(newNpcIndex).Contadores.TiempoExistencia = tiempoRestante
+    NpcList(newNpcIndex).poderAtaque = poderAtaque
+    NpcList(newNpcIndex).Stats.minHit = minHit
+    NpcList(newNpcIndex).Stats.maxHit = maxHit
+    NpcList(newNpcIndex).GiveGLD = 0
+
+    Call SetUserRef(NpcList(newNpcIndex).MaestroUser, UserIndex)
+    Call FollowAmo(newNpcIndex)
+    Exit Sub
+
+WarpInvocacion_Err:
+    Call TraceError(Err.Number, Err.Description, "UsUaRiOs.WarpInvocacion", Erl)
+End Sub
+
+''
+' Libera un slot de invocación: limpia referencia y type, y descuenta NroMascotas.
+'
+Private Sub LiberarSlotInvocacion(ByVal UserIndex As Integer, ByVal slotIndex As Integer)
+    On Error GoTo LiberarSlotInvocacion_Err
+
+    Call ClearNpcRef(UserList(UserIndex).MascotasIndex(slotIndex))
+    UserList(UserIndex).MascotasType(slotIndex) = 0
+    UserList(UserIndex).NroMascotas = UserList(UserIndex).NroMascotas - 1
+    Exit Sub
+
+LiberarSlotInvocacion_Err:
+    Call TraceError(Err.Number, Err.Description, "UsUaRiOs.LiberarSlotInvocacion", Erl)
 End Sub
 
 Public Sub SetModoConsulta(ByVal UserIndex As Integer)
@@ -3411,7 +3512,7 @@ Public Sub HandleUserPetsOnDeath(ByVal UserIndex As Integer)
             End If
         End If
         'Procesar mascotas ACTIVAS, si hay protección guardarlas, si no hay protección matarlas
-        For i = 1 To MAXMASCOTAS
+        For i = 1 To MAX_SLOTS_MASCOTAS
             If .MascotasIndex(i).ArrayIndex > 0 Then   ' Hay mascota activa
                 'Obtener si es mascota domada (TiempoExistencia = 0)
                 Dim isTamed As Boolean

@@ -1281,6 +1281,16 @@ Public Enum e_TipoHechizo
     uPhysicalSkill = 10
 End Enum
 
+' <<<<<< Hechizos de area >>>>>>
+Public Enum e_AreaAfecta
+    eAreaAfectaUsuarios = 1
+    eAreaAfectaNpcs = 2
+    eAreaAfectaAmbos = 3
+End Enum
+
+Public Const AREA_SPELL_FALLOFF_PER_TILE As Integer = 20  ' % de reduccion por tile de distancia al centro
+Public Const PERCENT_BASE                As Integer = 100
+
 Public Const MAX_MENSAJES_FORO   As Byte = 35
 Public Const MAXUSERHECHIZOS     As Byte = 40
 
@@ -1391,6 +1401,12 @@ Public Const MAXSKILLPOINTS As Byte = 100
 ''
 ' Cantidad maxima de mascotas
 Public Const MAXMASCOTAS    As Byte = 3
+
+' Slots totales: domadas (1..MAXMASCOTAS) + invocaciones (MAXMASCOTAS + 1..MAX_SLOTS_MASCOTAS)
+Public Const MAX_SLOTS_MASCOTAS   As Byte = 6
+
+' Cantidad maxima de criaturas activas en el mundo (domadas + invocadas)
+Public Const MAX_MASCOTAS_ACTIVAS As Byte = 3
 
 Public Const MAXCOLLECTIBLECARDS As Integer = 1024
 
@@ -2156,6 +2172,7 @@ Public Type t_Quest
     PermittedFactions As Integer
     GlobalQuestIndex As Integer
     GlobalQuestThresholdNeeded As Long
+    PosMap As Integer
 End Type
 
 Public Enum e_AutoCombatState
@@ -2213,12 +2230,20 @@ Public Enum e_EquipoReto
     Derecha
 End Enum
 
+Public Enum e_FaseReto
+    Inactiva
+    EnJuego
+    Finalizando
+    DepositoItems
+End Enum
+
 Public Type t_SalaReto
     PosIzquierda As t_WorldPos
     PosDerecha As t_WorldPos
-    IndexBanquero As Integer
+    Banquero As t_NpcReference
     ' -----------------
     EnUso As Boolean
+    Fase As e_FaseReto
     Ronda As Byte
     Puntaje As Integer
     Apuesta As Long
@@ -3126,8 +3151,8 @@ Public Type t_User
     ComUsu As t_ComercioUsuario
     EmpoCont As Byte
     NroMascotas As Integer
-    MascotasType(1 To MAXMASCOTAS) As Integer
-    MascotasIndex(1 To MAXMASCOTAS) As t_NpcReference
+    MascotasType(1 To MAX_SLOTS_MASCOTAS) As Integer
+    MascotasIndex(1 To MAX_SLOTS_MASCOTAS) As t_NpcReference
     GuildIndex As Integer   'puntero al array global de guilds
     FundandoGuildAlineacion As e_ALINEACION_GUILD     'esto esta aca hasta que se parchee el cliente y se pongan cadenas de datos distintas para cada alineacion
     EscucheClan As Integer

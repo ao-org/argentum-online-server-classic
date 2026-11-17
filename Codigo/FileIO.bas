@@ -2062,9 +2062,8 @@ End Sub
 Sub LoadFeatureToggles()
     On Error GoTo LoadFeatureToggles_Err
     Dim Lector   As clsIniManager
-    Dim Temporal As Long
     Set FeatureToggles = New Dictionary
-    If Not FileExist("feature_toggle.ini") Then
+    If Not FileExist(iniPath & "feature_toggle.ini") Then
         Exit Sub
     End If
     If frmMain.Visible Then frmMain.txStatus.Caption = "Cargando info de feature toggles."
@@ -2905,7 +2904,7 @@ Public Sub CargarDonadores()
     End If
 End Sub
 
-Public Function IsFeatureEnabled(ByVal featureName As String)
+Public Function IsFeatureEnabled(ByVal featureName As String) As Boolean
     If FeatureToggles.Exists(featureName) Then
         IsFeatureEnabled = FeatureToggles.Item(featureName)
     Else
@@ -2949,6 +2948,12 @@ Sub LoadGuildsConfig()
     GuildsIni.Initialize DatPath & "Clanes.dat"
     
     Dim i As Long
+    
+    'Cantidad máxima de niveles de clan (debe leerse antes que todo lo demás)
+    MAX_LEVEL_GUILD = CByte(val(GuildsIni.GetValue("GUILDLEVELS", "MaxGuildLevel", "7")))
+    ReDim ExpLevelUpGuild(1 To MAX_LEVEL_GUILD)
+    ReDim MembersByLevel(1 To MAX_LEVEL_GUILD)
+    ReDim PriceAcceptMemberGuild(1 To MAX_LEVEL_GUILD)
 
     'Experiencia de niveles de clan
     For i = 1 To MAX_LEVEL_GUILD

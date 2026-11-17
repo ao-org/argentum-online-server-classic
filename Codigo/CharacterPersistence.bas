@@ -444,9 +444,12 @@ Private Sub SetupUserPets(ByRef User As t_User)
     Set RS = Query("SELECT number, pet_id FROM pet WHERE user_id = ?;", User.Id)
     If Not RS Is Nothing Then
         While Not RS.EOF
-            User.MascotasType(RS!Number) = RS!pet_id
-            If val(RS!pet_id) <> 0 Then
-                User.NroMascotas = User.NroMascotas + 1
+            ' Solo slots de domadas: un number fuera de rango caería en un slot de invocación
+            If RS!Number >= 1 And RS!Number <= MAXMASCOTAS Then
+                User.MascotasType(RS!Number) = RS!pet_id
+                If val(RS!pet_id) <> 0 Then
+                    User.NroMascotas = User.NroMascotas + 1
+                End If
             End If
             RS.MoveNext
         Wend

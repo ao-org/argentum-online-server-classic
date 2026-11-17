@@ -469,6 +469,10 @@ Private Sub UserDamageNpc(ByVal UserIndex As Integer, ByVal NpcIndex As Integer,
         If DamageExtra > 0 Then
             Damage = Damage + DamageExtra
         End If
+        ' Avisamos al dueño si golpean a su mascota
+        If NpcList(NpcIndex).MaestroUser.ArrayIndex <> UserIndex Then
+            Call NotifyPetOwnerOfDamage(NpcIndex, .name, Damage)
+        End If
         ' Restamos el daño al NPC
         If NPCs.DoDamageOrHeal(NpcIndex, UserIndex, eUser, -Damage, e_phisical, .invent.EquippedWeaponObjIndex, Color) = eStillAlive Then
             'efectos
@@ -508,9 +512,17 @@ Public Function UserDamageToNpc(ByVal attackerIndex As Integer, _
                                 ByVal Damage As Long, _
                                 ByVal Source As e_DamageSourceType, _
                                 ByVal ObjIndex As Integer) As e_DamageResult
+    On Error GoTo UserDamageToNpc_Err
     Damage = Damage * UserMod.GetPhysicalDamageModifier(UserList(attackerIndex), eNpc)
     Damage = Damage * NPCs.GetPhysicDamageReduction(NpcList(TargetIndex))
+    ' Avisamos al dueño si un jugador dañó a su mascota
+    If NpcList(TargetIndex).MaestroUser.ArrayIndex <> attackerIndex Then
+        Call NotifyPetOwnerOfDamage(TargetIndex, UserList(attackerIndex).name, Damage)
+    End If
     UserDamageToNpc = NPCs.DoDamageOrHeal(TargetIndex, attackerIndex, e_ReferenceType.eUser, -Damage, Source, ObjIndex)
+    Exit Function
+UserDamageToNpc_Err:
+    Call TraceError(Err.Number, Err.Description, "SistemaCombate.UserDamageToNpc", Erl)
 End Function
 
 Public Function GetNpcDamage(ByVal NpcIndex As Integer, ByVal TargetType As e_ReferenceType) As Long
@@ -714,6 +726,11 @@ Public Function NpcDamageToNpc(ByVal attackerIndex As Integer, _
         
         finalDamage = finalDamage * NPCs.GetPhysicalDamageModifier(NpcList(attackerIndex), eNpc)
         finalDamage = finalDamage * NPCs.GetPhysicDamageReduction(NpcList(TargetIndex))
+        
+        ' Avisamos al dueño si otro NPC golpea a su mascota
+        If .MaestroUser.ArrayIndex <> NpcList(TargetIndex).MaestroUser.ArrayIndex Then
+            Call NotifyPetOwnerOfDamage(TargetIndex, .name, finalDamage)
+        End If
         
         NpcDamageToNpc = NPCs.DoDamageOrHeal(TargetIndex, attackerIndex, eNpc, -finalDamage, e_phisical, 0)
 
@@ -1981,7 +1998,7 @@ Sub AllMascotasAtacanUser(ByVal victim As Integer, ByVal Maestro As Integer)
     Dim iCount       As Long
     Dim mascotaIndex As Integer
     With UserList(Maestro)
-        For iCount = 1 To MAXMASCOTAS
+        For iCount = 1 To MAX_SLOTS_MASCOTAS
             mascotaIndex = .MascotasIndex(iCount).ArrayIndex
             If mascotaIndex > 0 Then
                 If IsValidNpcRef(.MascotasIndex(iCount)) Then
@@ -2016,7 +2033,7 @@ Public Sub AllMascotasAtacanNPC(ByVal NpcIndex As Integer, ByVal UserIndex As In
     Else
         Exit Sub
     End If
-    For j = 1 To MAXMASCOTAS
+    For j = 1 To MAX_SLOTS_MASCOTAS
         If IsValidNpcRef(UserList(UserIndex).MascotasIndex(j)) Then
             mascotaIdx = UserList(UserIndex).MascotasIndex(j).ArrayIndex
             If mascotaIdx > 0 And mascotaIdx <> NpcIndex Then
@@ -2035,6 +2052,20 @@ Public Sub AllMascotasAtacanNPC(ByVal NpcIndex As Integer, ByVal UserIndex As In
     Exit Sub
 AllMascotasAtacanNPC_Err:
     Call TraceError(Err.Number, Err.Description, "SistemaCombate.AllMascotasAtacanNPC", Erl)
+End Sub
+
+Public Sub NotifyPetOwnerOfDamage(ByVal PetIndex As Integer, ByVal AttackerName As String, ByVal Damage As Long)
+    On Error GoTo NotifyPetOwnerOfDamage_Err
+    Dim OwnerIndex As Integer
+    If Damage <= 0 Then Exit Sub
+    If Not IsValidUserRef(NpcList(PetIndex).MaestroUser) Then Exit Sub
+    OwnerIndex = NpcList(PetIndex).MaestroUser.ArrayIndex
+    If UserList(OwnerIndex).ChatCombate <> 1 Then Exit Sub
+    Call WriteLocaleMsg(OwnerIndex, MSG_PET_DAMAGED_BY, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_FIGHT, _
+                        AttackerName & Chr$(172) & PonerPuntos(Damage) & Chr$(172) & NpcList(PetIndex).name)
+    Exit Sub
+NotifyPetOwnerOfDamage_Err:
+    Call TraceError(Err.Number, Err.Description, "SistemaCombate.NotifyPetOwnerOfDamage", Erl)
 End Sub
 
 Private Function PuedeDesequiparDeUnGolpe(ByVal UserIndex As Integer) As Boolean
