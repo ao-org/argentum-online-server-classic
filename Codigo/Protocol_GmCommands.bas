@@ -3219,6 +3219,13 @@ Public Sub HandleGlobalMessage(ByVal UserIndex As Integer)
             If SvrConfig.GetValue("ChatGlobal") = 1 Then
                 If LenB(chat) <> 0 Then
                     
+                    ' Verificar palabras prohibidas
+                    If Not ValidWordsGlobalChat(chat) Then
+                        'Msg2308=Tu mensaje contiene palabras que no están permitidas.
+                        Call WriteLocaleMsg(UserIndex, MSG_GLOBAL_MENSAJE_PALABRAS_PROHIBIDAS, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_WARNING)
+                        Exit Sub
+                    End If
+                    
                     ' Verificar oro suficiente
                     Dim chatCosto As Long
                     chatCosto = SvrConfig.GetValue("ChatGlobalCosto")
@@ -3258,7 +3265,7 @@ Public Sub HandleGlobalOnOff(ByVal UserIndex As Integer)
         If (.flags.Privilegios And (e_PlayerType.Admin Or e_PlayerType.Dios)) = 0 Then Exit Sub
         Call LogGM(GetUserRealName(UserIndex), " activo al Chat Global a las " & Now)
         If SvrConfig.GetValue("ChatGlobal") = 0 Then
-            Call SendData(SendTarget.ToAll, 0, PrepareMessageLocaleMsg(MSG_SERVIDOR_CHAT_GENERAL_HABILITADO_ESCRIBE_CONSOLA_MENSAJE, vbNullString, e_TextChannel.TEXTCHANNEL_SERVER_STAFF, e_FontTypeNames.FONTTYPE_SERVER)) ' Msg1835=Servidor Â» Chat general habilitado. Escribe "/CONSOLA" o ";" y su mensaje para utilizarlo.
+            Call SendData(SendTarget.ToAll, 0, PrepareMessageLocaleMsg(MSG_SERVIDOR_CHAT_GENERAL_HABILITADO_ESCRIBE_CONSOLA_MENSAJE, vbNullString, e_TextChannel.TEXTCHANNEL_SERVER_STAFF, e_FontTypeNames.FONTTYPE_SERVER)) ' Msg1835=Servidor » Chat general habilitado. Escribe "/GLOBAL" su mensaje para utilizarlo.
         Else
             Call SendData(SendTarget.ToAll, 0, PrepareMessageLocaleMsg(MSG_GLOBAL_CHAT_DISABLED, vbNullString, e_TextChannel.TEXTCHANNEL_SERVER_STAFF, e_FontTypeNames.FONTTYPE_SERVER))
         End If

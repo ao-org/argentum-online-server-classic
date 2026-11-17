@@ -3737,6 +3737,8 @@ Public FX()                                   As t_FXdata
 Public SpawnList()                            As t_CriaturasEntrenador
 Public ForbidenNames()                        As String
 Public BlockedWordsDescription()              As String
+Public BlockedWordsGlobalChat()               As String
+Public Const BLOCKED_WORDS_GLOBAL_CHAT_FILE As String = "BlockedWordsGlobalChat.txt"
 Public ArmasHerrero()                         As Integer
 Public ArmadurasHerrero()                     As Integer
 Public BlackSmithElementalRunes()             As Integer

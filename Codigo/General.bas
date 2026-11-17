@@ -547,6 +547,7 @@ Sub Main()
     Call LoadIntervalos
     Call CargarForbidenWords
     Call LoadBlockedWordsDescription
+    Call LoadBlockedWordsGlobalChat
     Call CargaApuestas
     Call CargarSpawnList
     Call LoadMotd
