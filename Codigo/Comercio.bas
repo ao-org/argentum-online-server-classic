@@ -31,7 +31,11 @@ Enum eModoComercio
     Venta = 2
 End Enum
 
-Public Const REDUCTOR_PRECIOVENTA As Byte = 3
+Public Const REDUCTOR_PRECIOVENTA             As Byte = 3
+Public Const FEATURE_DESTROY_NPC_BOUGHT_ITEMS As String = "destroy_npc_bought_items"
+Public Const FEATURE_WORKER_SALE_BONUS        As String = "worker_sale_bonus"
+Public Const WORKER_SALE_BONUS_PER_LEVEL      As Single = 0.025
+Public Const MIN_SALE_PRICE_DIVISOR           As Byte = 2
 
 Public Sub Comercio(ByVal Modo As eModoComercio, ByVal UserIndex As Integer, ByVal NpcIndex As Integer, ByVal Slot As Integer, ByVal Cantidad As Integer)
     On Error GoTo Comercio_Err
@@ -146,7 +150,7 @@ Public Sub Comercio(ByVal Modo As eModoComercio, ByVal UserIndex As Integer, ByV
         UserList(UserIndex).Stats.GLD = UserList(UserIndex).Stats.GLD + precio
         If UserList(UserIndex).Stats.GLD > MAXORO Then UserList(UserIndex).Stats.GLD = MAXORO
         Call WriteUpdateGold(UserIndex)
-        If Not IsFeatureEnabled("destroy_npc_bought_items") Then
+        If Not IsFeatureEnabled(FEATURE_DESTROY_NPC_BOUGHT_ITEMS) Then
             NpcSlot = SlotEnNPCInv(NpcIndex, Objeto.ObjIndex, Objeto.Amount)
             If NpcSlot > 0 And NpcSlot <= MAX_INVENTORY_SLOTS Then 'Slot valido
                 ' Saque este incremento de SlotEnNPCInv porque me parece mejor manejarlo junto con el resto de las asignaciones
@@ -314,10 +318,10 @@ Public Function SalePrice(ByVal ObjIndex As Integer, Optional ByVal UserIndex As
     If ItemNewbie(ObjIndex) Then Exit Function
     Dim denom As Double
     denom = REDUCTOR_PRECIOVENTA
-    If UserIndex > 0 And IsFeatureEnabled("destroy_npc_bought_items") Then
+    If UserIndex > 0 And IsFeatureEnabled(FEATURE_WORKER_SALE_BONUS) Then
         If UserList(UserIndex).clase = e_Class.Trabajador Then
-            denom = denom - (UserList(UserIndex).Stats.ELV * 0.025) '0.25/10 = 0.025
-            If denom < 2 Then denom = 2 'clamp: evita div0 y negativos
+            denom = denom - (UserList(UserIndex).Stats.ELV * WORKER_SALE_BONUS_PER_LEVEL)
+            If denom < MIN_SALE_PRICE_DIVISOR Then denom = MIN_SALE_PRICE_DIVISOR 'clamp: evita div0 y negativos
         End If
     End If
     SalePrice = CSng(ObjData(ObjIndex).Valor / denom)
