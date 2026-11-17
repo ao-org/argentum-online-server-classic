@@ -968,35 +968,44 @@ End Sub
 '
 Public Sub EfectoMimetismo(ByVal UserIndex As Integer)
     On Error GoTo EfectoMimetismo_Err
-    Dim Barco As t_ObjData
     With UserList(UserIndex)
         If .Counters.Mimetismo < IntervaloInvisible Then
             .Counters.Mimetismo = .Counters.Mimetismo + 1
         Else
-            'restore old char
             ' Msg517=Recuperas tu apariencia normal.
-            Call WriteLocaleMsg(UserIndex, MSG_RECUPERAS_APARIENCIA_NORMAL, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_PROMEDIO_MAYOR)
-            If .flags.Navegando Then
-                Call EquiparBarco(UserIndex)
-            Else
-                .Char.body = .CharMimetizado.body
-                .Char.head = .CharMimetizado.head
-                .Char.CascoAnim = .CharMimetizado.CascoAnim
-                .Char.ShieldAnim = .CharMimetizado.ShieldAnim
-                .Char.WeaponAnim = .CharMimetizado.WeaponAnim
-                .Char.CartAnim = .CharMimetizado.CartAnim
-            End If
-            .Counters.Mimetismo = 0
-            .flags.Mimetizado = e_EstadoMimetismo.Desactivado
-            With .Char
-                Call ChangeUserChar(UserIndex, .body, .head, .Heading, .WeaponAnim, .ShieldAnim, .CascoAnim, .CartAnim, .BackpackAnim)
-                Call RefreshCharStatus(UserIndex)
-            End With
+            Call EndMimetism(UserIndex, MSG_RECUPERAS_APARIENCIA_NORMAL)
         End If
     End With
     Exit Sub
 EfectoMimetismo_Err:
     Call TraceError(Err.Number, Err.Description, "General.EfectoMimetismo", Erl)
+End Sub
+
+Public Sub EndMimetism(ByVal UserIndex As Integer, ByVal MessageId As Integer)
+    On Error GoTo EndMimetism_Err
+    With UserList(UserIndex)
+        If .flags.Mimetizado = e_EstadoMimetismo.Desactivado Then Exit Sub
+        Call WriteLocaleMsg(UserIndex, MessageId, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_PROMEDIO_MAYOR)
+        If .flags.Navegando Then
+            Call EquiparBarco(UserIndex)
+        Else
+            .Char.body = .CharMimetizado.body
+            .Char.head = .CharMimetizado.head
+            .Char.CascoAnim = .CharMimetizado.CascoAnim
+            .Char.ShieldAnim = .CharMimetizado.ShieldAnim
+            .Char.WeaponAnim = .CharMimetizado.WeaponAnim
+            .Char.CartAnim = .CharMimetizado.CartAnim
+        End If
+        .Counters.Mimetismo = 0
+        .flags.Mimetizado = e_EstadoMimetismo.Desactivado
+        With .Char
+            Call ChangeUserChar(UserIndex, .body, .head, .Heading, .WeaponAnim, .ShieldAnim, .CascoAnim, .CartAnim, .BackpackAnim)
+        End With
+        Call RefreshCharStatus(UserIndex)
+    End With
+    Exit Sub
+EndMimetism_Err:
+    Call TraceError(Err.Number, Err.Description, "General.EndMimetism", Erl)
 End Sub
 
 Public Sub EfectoInvisibilidad(ByVal UserIndex As Integer)

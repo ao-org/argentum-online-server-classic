@@ -695,6 +695,9 @@ Dim obj                         As t_ObjData
 
     With UserList(UserIndex)
 
+        ' Msg654=Pierdes el efecto del mimetismo.
+        Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
+
         If Not bSkin Then
             'Desequipa el item slot del inventario
             If (Slot < LBound(.invent.Object)) Or (Slot > UBound(.invent.Object)) Then
@@ -1168,6 +1171,9 @@ Dim Ropaje                      As Integer
                 End If
             End If
 
+            ' Msg654=Pierdes el efecto del mimetismo.
+            Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
+
             Select Case obj.OBJType
                 Case e_OBJType.otWeapon
                     errordesc = "Arma"
@@ -1630,6 +1636,8 @@ Dim Ropaje                      As Integer
                 '    Call SendData(SendTarget.ToPCAreaWithSound, UserIndex, PrepareMessagePlayWave(tmpSoundItem, .pos.x, .pos.y))
                 'End If
                 If CanEquipSkin(UserIndex, Slot, True) Then
+                    ' Msg654=Pierdes el efecto del mimetismo.
+                    Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
                     Call SkinEquip(UserIndex, Slot, ObjIndex)
                 End If
         End Select
@@ -2142,6 +2150,8 @@ Sub UseInvItem(ByVal UserIndex As Integer, ByVal Slot As Byte, ByVal ByClick As 
                             .flags.invisible = 1
                             .Counters.Invisibilidad = obj.DuracionEfecto
                             Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageSetInvisible(.Char.charindex, True, .pos.x, .pos.y))
+                            ' Msg654=Pierdes el efecto del mimetismo.
+                            Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
                             Call WriteContadores(UserIndex)
                             Call QuitarUserInvItem(UserIndex, Slot, 1)
                             If obj.Snd1 <> 0 Then

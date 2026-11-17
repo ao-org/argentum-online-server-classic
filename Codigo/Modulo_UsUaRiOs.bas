@@ -1633,6 +1633,8 @@ Sub NPCAtacado(ByVal NpcIndex As Integer, ByVal UserIndex As Integer, Optional B
     '  El usuario pierde la protección
     UserList(UserIndex).Counters.TiempoDeInmunidad = 0
     UserList(UserIndex).flags.Inmunidad = 0
+    ' Msg654=Pierdes el efecto del mimetismo.
+    Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
     'Guardamos el usuario que ataco el npc.
     If Not IsSet(NpcList(NpcIndex).flags.StatusMask, eTaunted) And NpcList(NpcIndex).Movement <> Estatico And NpcList(NpcIndex).flags.AttackedFirstBy = vbNullString Then
         Call SetUserRef(NpcList(NpcIndex).TargetUser, UserIndex)

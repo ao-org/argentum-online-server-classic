@@ -4819,7 +4819,12 @@ Private Sub HandleMeditate(ByVal UserIndex As Integer)
         Else
             .Char.FX = 0
         End If
-        Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, .Char.FX, .pos.x, .pos.y))
+        If .flags.Meditando And .flags.Mimetizado <> e_EstadoMimetismo.Desactivado Then
+            Call SendData(SendTarget.ToIndex, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, .Char.FX, .pos.x, .pos.y))
+            .Char.FX = 0
+        Else
+            Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, .Char.FX, .pos.x, .pos.y))
+        End If
     End With
     Exit Sub
 HandleMeditate_Err:
