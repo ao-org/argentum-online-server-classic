@@ -36,6 +36,26 @@ ValidWordsDescription_Err:
     Call TraceError(Err.Number, Err.Description, "StringUtils.ValidWordsDescription", Erl)
 End Function
 
+Public Function ValidWordsGlobalChat(ByVal message As String) As Boolean
+    On Error GoTo ValidWordsGlobalChat_Err
+    Dim normalizedMessage As String
+    Dim wordIndex         As Integer
+    
+    normalizedMessage = " " & NormalizeText(message) & " "
+    For wordIndex = LBound(BlockedWordsGlobalChat) To UBound(BlockedWordsGlobalChat)
+        If LenB(BlockedWordsGlobalChat(wordIndex)) <> 0 Then
+            If InStr(1, normalizedMessage, " " & BlockedWordsGlobalChat(wordIndex) & " ", vbTextCompare) > 0 Then
+                ValidWordsGlobalChat = False
+                Exit Function
+            End If
+        End If
+    Next wordIndex
+    ValidWordsGlobalChat = True
+    Exit Function
+ValidWordsGlobalChat_Err:
+    Call TraceError(Err.Number, Err.Description, "StringUtils.ValidWordsGlobalChat", Erl)
+End Function
+
 Private Function NormalizeText(ByVal cad As String) As String
     On Error GoTo NormalizeText_Err
     ' Esta función normaliza una cadena para facilitar la detección de palabras/frases prohibidas

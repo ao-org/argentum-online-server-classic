@@ -181,6 +181,8 @@ Public Sub DoOcultarse(ByVal UserIndex As Integer)
                 UserList(UserIndex).Counters.timeFx = 3
                 Call SendData(SendTarget.ToPCAliveArea, UserIndex, _
                               PrepareMessageSetInvisible(.Char.charindex, True, UserList(UserIndex).pos.x, UserList(UserIndex).pos.y))
+                ' Msg654=Pierdes el efecto del mimetismo.
+                Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
                 'Msg55=¡Te has escondido entre las sombras!
                 Call WriteLocaleMsg(UserIndex, MSG_ESCONDIDO_ENTRE_SOMBRAS, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
             End If
