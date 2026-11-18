@@ -3601,7 +3601,13 @@ Public Function TryStartMeditation(ByVal UserIndex As Integer) As Boolean
         .Counters.TiempoInicioMeditar = 0
         .Char.FX = GetMeditationFX(UserIndex)
 
-        Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, .Char.FX, .pos.x, .pos.y))
+        If .flags.Mimetizado <> e_EstadoMimetismo.Desactivado Then
+            ' Mimetizado: solo el propio usuario ve el efecto de meditacion.
+            Call SendData(SendTarget.ToIndex, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, .Char.FX, .pos.x, .pos.y))
+            .Char.FX = 0
+        Else
+            Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, .Char.FX, .pos.x, .pos.y))
+        End If
     End With
 
     TryStartMeditation = True
