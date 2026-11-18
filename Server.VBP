@@ -195,6 +195,7 @@ Module=ModUnderworld; Codigo\ModUnderworld.bas
 Module=ModCollectibleCards; Codigo\ModCollectibleCards.bas
 Module=modFontManager; Codigo\modFontManager.bas
 Module=ModCastle; Codigo\ModCastle.bas
+Module=modAutoCombat; Codigo\modAutoCombat.bas
 IconForm="frmMain"
 Startup="Sub Main"
 HelpFile=""

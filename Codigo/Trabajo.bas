@@ -1521,6 +1521,7 @@ Public Sub DoMeditar(ByVal UserIndex As Integer)
                 Call WriteUpdateMana(UserIndex)
                 Call SubirSkill(UserIndex, Meditar)
                 Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, 0))
+                Call OnAutoCombatMeditationCompleted(UserIndex)
             Else
                 .Stats.MinMAN = .Stats.MinMAN + Mana
                 Call WriteUpdateMana(UserIndex)

@@ -63,6 +63,7 @@ Public Sub MaybeRunGameEvents()
                         If .flags.Incinerado <> 0 Then Call EfectoIncineramiento(iUserIndex)
                     End If
                     If .flags.Meditando Then Call DoMeditar(iUserIndex)
+                    If .AutoCombat.State <> e_AutoCombatState.e_AutoCombatOff Then Call ProcessAutoCombat(iUserIndex)
                     If .flags.Mimetizado <> 0 Then Call EfectoMimetismo(iUserIndex)
                     If .flags.AdminInvisible <> 1 Then
                         If .flags.Oculto = 1 Then Call DoPermanecerOculto(iUserIndex)
