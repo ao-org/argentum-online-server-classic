@@ -616,9 +616,7 @@ Dim tStr                        As String
                 End If
             Next
         End If
-        If .invent.EquippedAmuletAccesoryObjIndex <> 0 Then
-            If ObjData(.invent.EquippedAmuletAccesoryObjIndex).EfectoMagico = 11 Then .flags.Paraliza = 1
-        End If
+        Call RestoreMagicItemFlags(UserIndex)
         Call WriteUserIndexInServer(UserIndex) 'Enviamos el User index
         Call WriteHora(UserIndex)
         Call WriteChangeMap(UserIndex, .pos.Map) 'Carga el mapa

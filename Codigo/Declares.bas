@@ -1649,6 +1649,13 @@ Public Enum e_MagicItemEffect
     eTalkToDead = 21
 End Enum
 
+' Paralisis de amuletos (EfectoMagico = eParalize): valores por defecto si faltan en obj.dat
+Public Const DEFAULT_PARALYZE_CHANCE_PVE As Byte = 25
+Public Const DEFAULT_PARALYZE_TIME_PVE   As Byte = 7
+Public Const DEFAULT_PARALYZE_CHANCE_PVP As Byte = 9
+Public Const DEFAULT_PARALYZE_TIME_PVP   As Byte = 7
+Public Const NPC_AI_TICKS_PER_SECOND     As Single = 6.5   ' Misma conversion que clsTrap (IntervaloNpcAI = 150 ms)
+
 Public Enum e_MagicEffect
     eMagicresistance = 1
     eAttributeModifier = 2 'Requires CuantoAumento y QueAtributo
@@ -2490,6 +2497,10 @@ Public Type t_ObjData
     RepairTo As Integer ' ObjIndex of the item granted when this object is repaired.
     CollectibleCardIndex As Integer
     CollectibleCardRarity As Byte
+    ParalyzeChancePVE As Byte    ' % de paralizar NPC al golpear (amuletos EfectoMagico = eParalize)
+    ParalyzeTimePVE As Byte      ' Segundos de paralisis sobre NPC
+    ParalyzeChancePVP As Byte    ' % de paralizar usuarios al golpear
+    ParalyzeTimePVP As Byte      ' Segundos de paralisis sobre usuarios
 End Type
 
 '[Pablo ToxicWaste]
