@@ -389,6 +389,7 @@ Public Sub LoadQuests()
             .RequiredOBJs = val(reader.GetValue("QUEST" & i, "RequiredOBJs"))
             .Trabajador = IIf(val(reader.GetValue("QUEST" & i, "Trabajador")) = 1, True, False)
             .TalkTo = val(reader.GetValue("QUEST" & i, "TalkTo"))
+            .PosMap = val(reader.GetValue("QUEST" & i, "PosMap"))
             If .RequiredOBJs > 0 Then
                 ReDim .RequiredOBJ(1 To .RequiredOBJs)
                 For j = 1 To .RequiredOBJs

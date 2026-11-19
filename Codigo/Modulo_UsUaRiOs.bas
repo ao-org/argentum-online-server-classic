@@ -352,6 +352,7 @@ Public Sub ConnectUser_Prepare(ByVal UserIndex As Integer, ByVal name As String)
     On Error GoTo Prepare_ConnectUser_Err
     Call ResetHooClientCapabilities(UserIndex)
     With UserList(UserIndex)
+        Call ResetAutoCombat(UserIndex)
         .flags.Escondido = 0
         Call ClearNpcRef(.flags.TargetNPC)
         .flags.TargetNpcTipo = e_NPCType.Comun
@@ -1119,7 +1120,8 @@ Sub MakeUserChar(ByVal toMap As Boolean, _
             'Send make character command to clients
             Dim klan       As String
             Dim clan_nivel As Byte
-            If Not toMap Then
+            Dim clanAlineacion As Byte
+            If Not ToMap Then
                 displayName = GetUserDisplayNameOrReal(UserIndex)
                 If .showName Then
                     If .flags.Mimetizado = e_EstadoMimetismo.Desactivado Then
@@ -1127,10 +1129,12 @@ Sub MakeUserChar(ByVal toMap As Boolean, _
                         If .GuildIndex > 0 Then
                             klan = modGuilds.GuildName(.GuildIndex)
                             clan_nivel = modGuilds.NivelDeClan(.GuildIndex)
+                            clanAlineacion = GuildAlignmentIndex(.GuildIndex)
                             TempName = displayName & " {" & aliasValue & "}" & " <" & klan & ">"
                         Else
                             klan = vbNullString
                             clan_nivel = 0
+                            clanAlineacion = e_ALINEACION_GUILD.ALINEACION_NEUTRAL
                             If .flags.EnConsulta Then
                                 TempName = displayName & " [CONSULTA]" & " {" & aliasValue & "}"
                             Else
@@ -1145,7 +1149,7 @@ Sub MakeUserChar(ByVal toMap As Boolean, _
                         .Char.BackpackAnim, .Char.FX, 999, .Char.CascoAnim, TempName, .Faccion.Status, .flags.Privilegios, .Char.ParticulaFx, .Char.Head_Aura, .Char.Arma_Aura, _
                         .Char.Body_Aura, .Char.DM_Aura, .Char.RM_Aura, .Char.Otra_Aura, .Char.Escudo_Aura, .Char.speeding, 0, appear, .Grupo.Lider.ArrayIndex, .GuildIndex, _
                         clan_nivel, .Stats.MinHp, .Stats.MaxHp, .Stats.MinMAN, .Stats.MaxMAN, 0, False, .flags.Navegando, .Stats.tipoUsuario, .flags.CurrentTeam, _
-                        .flags.tiene_bandera)
+                        .flags.tiene_bandera, clanAlineacion:=clanAlineacion)
             Else
                 'Hide the name and clan - set privs as normal user
                 Call AgregarUser(UserIndex, .pos.Map, appear)
@@ -1729,6 +1733,8 @@ Sub NPCAtacado(ByVal NpcIndex As Integer, ByVal UserIndex As Integer, Optional B
     '  El usuario pierde la protección
     UserList(UserIndex).Counters.TiempoDeInmunidad = 0
     UserList(UserIndex).flags.Inmunidad = 0
+    ' Msg654=Pierdes el efecto del mimetismo.
+    Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
     'Guardamos el usuario que ataco el npc.
     If Not IsSet(NpcList(NpcIndex).flags.StatusMask, eTaunted) And NpcList(NpcIndex).Movement <> Estatico And NpcList(NpcIndex).flags.AttackedFirstBy = vbNullString Then
         Call SetUserRef(NpcList(NpcIndex).TargetUser, UserIndex)
@@ -1850,6 +1856,7 @@ Sub UserDie(ByVal UserIndex As Integer)
     Dim i  As Long
     Dim aN As Integer
     With UserList(UserIndex)
+        Call StopAutoCombat(UserIndex, e_AutoCombatStopReason.e_AutoCombatStopUserDied)
         .Counters.Mimetismo = 0
         .flags.Mimetizado = e_EstadoMimetismo.Desactivado
         Call RefreshCharStatus(UserIndex)
@@ -2288,6 +2295,7 @@ Sub WarpUserChar(ByVal UserIndex As Integer, ByVal Map As Integer, ByVal x As In
         OldY = .pos.y
         Call EraseUserChar(UserIndex, True, FX)
         If OldMap <> Map Then
+            Call StopAutoCombat(UserIndex, e_AutoCombatStopReason.e_AutoCombatStopMapChanged)
             Call WriteChangeMap(UserIndex, Map)
             If MapInfo(OldMap).Seguro = 1 And MapInfo(Map).Seguro = 0 And .Stats.ELV < 42 Then
                 ' Msg573=Estás saliendo de una zona segura, recuerda que aquí corres riesgo de ser atacado.
@@ -2518,33 +2526,29 @@ Private Sub WarpMascotas(ByVal UserIndex As Integer)
     Dim PermiteMascotas  As Boolean
     Dim Index            As Integer
     Dim iMinHP           As Integer
-    Dim PetTiempoDeVida  As Integer
     Dim MascotaQuitada   As Boolean
     Dim ElementalQuitado As Boolean
     Dim SpawnInvalido    As Boolean
+    Dim SpawnPos         As t_WorldPos
     PermiteMascotas = MapInfo(UserList(UserIndex).pos.Map).NoMascotas = False
+
+    ' Mascotas domadas
     For i = 1 To MAXMASCOTAS
         Index = UserList(UserIndex).MascotasIndex(i).ArrayIndex
         If IsValidNpcRef(UserList(UserIndex).MascotasIndex(i)) Then
             iMinHP = NpcList(Index).Stats.MinHp
-            PetTiempoDeVida = NpcList(Index).Contadores.TiempoExistencia
             Call SetUserRef(NpcList(Index).MaestroUser, 0)
             Call QuitarNPC(Index, eRemoveWarpPets)
-            If PetTiempoDeVida > 0 Then
-                Call QuitarMascota(UserIndex, Index)
-                ElementalQuitado = True
-            ElseIf Not PermiteMascotas Then
+            If Not PermiteMascotas Then
                 Call ClearNpcRef(UserList(UserIndex).MascotasIndex(i))
                 MascotaQuitada = True
             End If
         Else
             Call ClearNpcRef(UserList(UserIndex).MascotasIndex(i))
             iMinHP = 0
-            PetTiempoDeVida = 0
         End If
         petType = UserList(UserIndex).MascotasType(i)
-        If petType > 0 And PermiteMascotas And (UserList(UserIndex).flags.MascotasGuardadas = 0 Or UserList(UserIndex).MascotasIndex(i).ArrayIndex > 0) And PetTiempoDeVida = 0 Then
-            Dim SpawnPos As t_WorldPos
+        If petType > 0 And PermiteMascotas And (UserList(UserIndex).flags.MascotasGuardadas = 0 Or UserList(UserIndex).MascotasIndex(i).ArrayIndex > 0) Then
             SpawnPos.Map = UserList(UserIndex).pos.Map
             SpawnPos.x = UserList(UserIndex).pos.x + RandomNumber(-3, 3)
             SpawnPos.y = UserList(UserIndex).pos.y + RandomNumber(-3, 3)
@@ -2563,6 +2567,12 @@ Private Sub WarpMascotas(ByVal UserIndex As Integer)
             End If
         End If
     Next i
+
+    ' Invocaciones: acompañan al dueño conservando su estado
+    For i = MAXMASCOTAS + 1 To MAX_SLOTS_MASCOTAS
+        Call WarpInvocacion(UserIndex, i, PermiteMascotas, ElementalQuitado, SpawnInvalido)
+    Next i
+
     If MascotaQuitada Then
         If Not PermiteMascotas Then
             ' Msg582=Una fuerza superior impide que tus mascotas entren en este mapa. Estas te esperarán afuera.
@@ -2578,6 +2588,102 @@ Private Sub WarpMascotas(ByVal UserIndex As Integer)
     Exit Sub
 WarpMascotas_Err:
     Call TraceError(Err.Number, Err.Description, "UsUaRiOs.WarpMascotas", Erl)
+End Sub
+
+''
+' Traslada una invocación junto a su dueño al cambiar de mapa.
+' Conserva vida, tiempo de existencia restante y stats de combate (no vuelve a aplicar
+' AdjustNpcStatWithCasterLevel, para que no acumule bonus en cada cambio de mapa).
+' Si el mapa no permite mascotas o el spawn falla, la invocación se pierde y se libera el slot.
+'
+' @param UserIndex        Dueño de la invocación.
+' @param slotIndex        Slot de invocación (MAXMASCOTAS + 1 .. MAX_SLOTS_MASCOTAS).
+' @param PermiteMascotas  Si el mapa destino permite mascotas.
+' @param ElementalQuitado Se marca en True si la invocación se perdió por el mapa.
+' @param SpawnInvalido    Se marca en True si la invocación no pudo spawnear.
+'
+Private Sub WarpInvocacion(ByVal UserIndex As Integer, ByVal slotIndex As Integer, ByVal PermiteMascotas As Boolean, _
+                           ByRef ElementalQuitado As Boolean, ByRef SpawnInvalido As Boolean)
+    On Error GoTo WarpInvocacion_Err
+
+    Dim oldNpcIndex    As Integer
+    Dim newNpcIndex    As Integer
+    Dim petType        As Integer
+    Dim vidaActual     As Long
+    Dim tiempoRestante As Long
+    Dim poderAtaque    As Long
+    Dim minHit         As Long
+    Dim maxHit         As Long
+    Dim SpawnPos       As t_WorldPos
+
+    ' Referencia rota: si quedó un type residual, se limpia el slot
+    If Not IsValidNpcRef(UserList(UserIndex).MascotasIndex(slotIndex)) Then
+        Call ClearNpcRef(UserList(UserIndex).MascotasIndex(slotIndex))
+        If UserList(UserIndex).MascotasType(slotIndex) > 0 Then
+            Call LiberarSlotInvocacion(UserIndex, slotIndex)
+        End If
+        Exit Sub
+    End If
+
+    oldNpcIndex = UserList(UserIndex).MascotasIndex(slotIndex).ArrayIndex
+    petType = UserList(UserIndex).MascotasType(slotIndex)
+    vidaActual = NpcList(oldNpcIndex).Stats.MinHp
+    tiempoRestante = NpcList(oldNpcIndex).Contadores.TiempoExistencia
+    poderAtaque = NpcList(oldNpcIndex).poderAtaque
+    minHit = NpcList(oldNpcIndex).Stats.minHit
+    maxHit = NpcList(oldNpcIndex).Stats.maxHit
+
+    ' Sin MaestroUser, QuitarNPC no pasa por QuitarMascota: el slot se maneja acá
+    Call SetUserRef(NpcList(oldNpcIndex).MaestroUser, 0)
+    Call QuitarNPC(oldNpcIndex, eRemoveWarpPets)
+
+    If Not PermiteMascotas Then
+        Call LiberarSlotInvocacion(UserIndex, slotIndex)
+        ElementalQuitado = True
+        Exit Sub
+    End If
+
+    SpawnPos.map = UserList(UserIndex).pos.map
+    SpawnPos.x = UserList(UserIndex).pos.x + RandomNumber(-3, 3)
+    SpawnPos.y = UserList(UserIndex).pos.y + RandomNumber(-3, 3)
+    newNpcIndex = SpawnNpc(petType, SpawnPos, False, False, False, UserIndex)
+
+    If newNpcIndex <= 0 Then
+        Call LiberarSlotInvocacion(UserIndex, slotIndex)
+        SpawnInvalido = True
+        Exit Sub
+    End If
+
+    Call SetNpcRef(UserList(UserIndex).MascotasIndex(slotIndex), newNpcIndex)
+
+    If vidaActual > 0 Then NpcList(newNpcIndex).Stats.MinHp = vidaActual
+    NpcList(newNpcIndex).Contadores.TiempoExistencia = tiempoRestante
+    NpcList(newNpcIndex).poderAtaque = poderAtaque
+    NpcList(newNpcIndex).Stats.minHit = minHit
+    NpcList(newNpcIndex).Stats.maxHit = maxHit
+    NpcList(newNpcIndex).GiveGLD = 0
+
+    Call SetUserRef(NpcList(newNpcIndex).MaestroUser, UserIndex)
+    Call FollowAmo(newNpcIndex)
+    Exit Sub
+
+WarpInvocacion_Err:
+    Call TraceError(Err.Number, Err.Description, "UsUaRiOs.WarpInvocacion", Erl)
+End Sub
+
+''
+' Libera un slot de invocación: limpia referencia y type, y descuenta NroMascotas.
+'
+Private Sub LiberarSlotInvocacion(ByVal UserIndex As Integer, ByVal slotIndex As Integer)
+    On Error GoTo LiberarSlotInvocacion_Err
+
+    Call ClearNpcRef(UserList(UserIndex).MascotasIndex(slotIndex))
+    UserList(UserIndex).MascotasType(slotIndex) = 0
+    UserList(UserIndex).NroMascotas = UserList(UserIndex).NroMascotas - 1
+    Exit Sub
+
+LiberarSlotInvocacion_Err:
+    Call TraceError(Err.Number, Err.Description, "UsUaRiOs.LiberarSlotInvocacion", Erl)
 End Sub
 
 Public Sub SetModoConsulta(ByVal UserIndex As Integer)
@@ -3018,6 +3124,9 @@ End Function
 Public Function ModifyHealth(ByVal UserIndex As Integer, ByVal amount As Long, Optional ByVal MinValue = 0) As Boolean
     With UserList(UserIndex)
         ModifyHealth = False
+        If Amount < 0 Then
+            Call StopAutoCombat(UserIndex, e_AutoCombatStopReason.e_AutoCombatStopDamageReceived)
+        End If
         .Stats.MinHp = .Stats.MinHp + amount
         If .Stats.MinHp > .Stats.MaxHp Then
             .Stats.MinHp = .Stats.MaxHp
@@ -3504,7 +3613,7 @@ Public Sub HandleUserPetsOnDeath(ByVal UserIndex As Integer)
             End If
         End If
         'Procesar mascotas ACTIVAS, si hay protección guardarlas, si no hay protección matarlas
-        For i = 1 To MAXMASCOTAS
+        For i = 1 To MAX_SLOTS_MASCOTAS
             If .MascotasIndex(i).ArrayIndex > 0 Then   ' Hay mascota activa
                 'Obtener si es mascota domada (TiempoExistencia = 0)
                 Dim isTamed As Boolean
@@ -3557,4 +3666,122 @@ Public Function RaceToString(ByVal raza As e_Raza) As String
         Case e_Raza.Orco:   RaceToString = "ORCO"
         Case Else:          RaceToString = ""
     End Select
+End Function
+
+Public Function TryStartMeditation(ByVal UserIndex As Integer) As Boolean
+    On Error GoTo TryStartMeditation_Err
+
+    With UserList(UserIndex)
+        If .flags.Meditando Then
+            TryStartMeditation = True
+            Exit Function
+        End If
+
+        'Si ya tiene el mana completo, no lo dejamos meditar.
+        If .Stats.MinMAN = .Stats.MaxMAN Then Exit Function
+
+        'Las clases NO MAGICAS no meditan...
+        If .clase = e_Class.Hunter Or .clase = e_Class.Trabajador Or .clase = e_Class.Warrior Or .clase = e_Class.Pirat Or .clase = e_Class.Thief Then Exit Function
+
+        If .flags.Muerto = 1 Then
+            'Msg77=¡¡Estás muerto!!.
+            Call WriteLocaleMsg(UserIndex, MSG_MUERTO, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
+            Exit Function
+        End If
+
+        If .flags.Montado = 1 Then
+            ' Msg756=No podes meditar estando montado.
+            Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_MEDITAR_ESTANDO_MONTADO, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+            Exit Function
+        End If
+
+        .flags.Meditando = True
+        .Counters.TimerMeditar = 0
+        .Counters.TiempoInicioMeditar = 0
+        .Char.FX = GetMeditationFX(UserIndex)
+
+        If .flags.Mimetizado <> e_EstadoMimetismo.Desactivado Then
+            ' Mimetizado: solo el propio usuario ve el efecto de meditacion.
+            Call SendData(SendTarget.ToIndex, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, .Char.FX, .pos.x, .pos.y))
+            .Char.FX = 0
+        Else
+            Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, .Char.FX, .pos.x, .pos.y))
+        End If
+    End With
+
+    TryStartMeditation = True
+    Exit Function
+
+TryStartMeditation_Err:
+    Call TraceError(Err.Number, Err.Description, "UserMod.TryStartMeditation", Erl)
+End Function
+
+Public Sub StopMeditation(ByVal UserIndex As Integer)
+    On Error GoTo StopMeditation_Err
+
+    With UserList(UserIndex)
+        If Not .flags.Meditando Then Exit Sub
+        .flags.Meditando = False
+        .Char.FX = 0
+        Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(.Char.charindex, 0, .pos.x, .pos.y))
+    End With
+
+    Exit Sub
+
+StopMeditation_Err:
+    Call TraceError(Err.Number, Err.Description, "UserMod.StopMeditation", Erl)
+End Sub
+
+Private Function GetMeditationFX(ByVal UserIndex As Integer) As Integer
+    On Error GoTo GetMeditationFX_Err
+
+    Dim inventorySlot As Integer
+    Dim objIndex      As Integer
+
+    With UserList(UserIndex)
+        For inventorySlot = 1 To UBound(.invent.Object)
+            objIndex = .invent.Object(inventorySlot).objIndex
+            If objIndex > 0 Then
+                If ObjData(objIndex).OBJType = otDonator And ObjData(objIndex).Subtipo = 4 And .invent.Object(inventorySlot).Equipped Then
+                    GetMeditationFX = ObjData(objIndex).HechizoIndex
+                    Exit Function
+                End If
+            End If
+        Next inventorySlot
+
+        Dim isCriminal As Boolean
+        isCriminal = (.faccion.Status = e_Facciones.Caos _
+                   Or .faccion.Status = e_Facciones.Criminal _
+                   Or .faccion.Status = e_Facciones.concilio)
+
+        Select Case .Stats.ELV
+            Case 1 To 12
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel1to12, MeditationLevel1to12)
+            Case 13 To 17
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel13to17, MeditationLevel13to17)
+            Case 18 To 24
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel18to24, MeditationLevel18to24)
+            Case 25 To 28
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel25to28, MeditationLevel25to28)
+            Case 29 To 32
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel29to32, MeditationLevel29to32)
+            Case 33 To 36
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel33to36, MeditationLevel33to36)
+            Case 37 To 39
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel37to39, MeditationLevel37to39)
+            Case 40 To 42
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel40to42, MeditationLevel40to42)
+            Case 43 To 44
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel43to44, MeditationLevel43to44)
+            Case 45 To 46
+                GetMeditationFX = IIf(isCriminal, MeditationCriminalLevel45to46, MeditationLevel45to46)
+            Case Else
+                GetMeditationFX = MeditationLevelMax
+        End Select
+    End With
+
+    Exit Function
+
+GetMeditationFX_Err:
+    Call TraceError(Err.Number, Err.Description, "UserMod.GetMeditationFX", Erl)
 End Function

@@ -472,6 +472,33 @@ LoadBlockedWordsDescription_Err:
     Call TraceError(Err.Number, Err.Description, "ES.LoadBlockedWordsDescription", Erl)
 End Sub
 
+Public Sub LoadBlockedWordsGlobalChat()
+    On Error GoTo LoadBlockedWordsGlobalChat_Err
+    Dim filePath   As String
+    Dim wordCount  As Integer
+    Dim fileNumber As Integer
+    Dim wordIndex  As Integer
+    
+    filePath = DatPath & BLOCKED_WORDS_GLOBAL_CHAT_FILE
+    wordCount = TxtDimension(filePath)
+    If wordCount = 0 Then
+        ReDim BlockedWordsGlobalChat(0)
+        Exit Sub
+    End If
+    ReDim BlockedWordsGlobalChat(1 To wordCount)
+    fileNumber = FreeFile(1)
+    Open filePath For Input As #fileNumber
+    For wordIndex = LBound(BlockedWordsGlobalChat) To UBound(BlockedWordsGlobalChat)
+        Line Input #fileNumber, BlockedWordsGlobalChat(wordIndex)
+        BlockedWordsGlobalChat(wordIndex) = LCase$(BlockedWordsGlobalChat(wordIndex))
+    Next wordIndex
+    Close fileNumber
+    Exit Sub
+LoadBlockedWordsGlobalChat_Err:
+    If fileNumber <> 0 Then Close fileNumber
+    Call TraceError(Err.Number, Err.Description, "ES.LoadBlockedWordsGlobalChat", Erl)
+End Sub
+
 Public Sub CargarHechizos()
     '###################################################
     '#               ATENCION PELIGRO                  #
@@ -2062,9 +2089,8 @@ End Sub
 Sub LoadFeatureToggles()
     On Error GoTo LoadFeatureToggles_Err
     Dim Lector   As clsIniManager
-    Dim Temporal As Long
     Set FeatureToggles = New Dictionary
-    If Not FileExist("feature_toggle.ini") Then
+    If Not FileExist(iniPath & "feature_toggle.ini") Then
         Exit Sub
     End If
     If frmMain.Visible Then frmMain.txStatus.Caption = "Cargando info de feature toggles."
@@ -2905,7 +2931,7 @@ Public Sub CargarDonadores()
     End If
 End Sub
 
-Public Function IsFeatureEnabled(ByVal featureName As String)
+Public Function IsFeatureEnabled(ByVal featureName As String) As Boolean
     If FeatureToggles.Exists(featureName) Then
         IsFeatureEnabled = FeatureToggles.Item(featureName)
     Else
@@ -2949,6 +2975,12 @@ Sub LoadGuildsConfig()
     GuildsIni.Initialize DatPath & "Clanes.dat"
     
     Dim i As Long
+    
+    'Cantidad máxima de niveles de clan (debe leerse antes que todo lo demás)
+    MAX_LEVEL_GUILD = CByte(val(GuildsIni.GetValue("GUILDLEVELS", "MaxGuildLevel", "7")))
+    ReDim ExpLevelUpGuild(1 To MAX_LEVEL_GUILD)
+    ReDim MembersByLevel(1 To MAX_LEVEL_GUILD)
+    ReDim PriceAcceptMemberGuild(1 To MAX_LEVEL_GUILD)
 
     'Experiencia de niveles de clan
     For i = 1 To MAX_LEVEL_GUILD

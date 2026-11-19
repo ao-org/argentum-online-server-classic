@@ -1281,6 +1281,16 @@ Public Enum e_TipoHechizo
     uPhysicalSkill = 10
 End Enum
 
+' <<<<<< Hechizos de area >>>>>>
+Public Enum e_AreaAfecta
+    eAreaAfectaUsuarios = 1
+    eAreaAfectaNpcs = 2
+    eAreaAfectaAmbos = 3
+End Enum
+
+Public Const AREA_SPELL_FALLOFF_PER_TILE As Integer = 20  ' % de reduccion por tile de distancia al centro
+Public Const PERCENT_BASE                As Integer = 100
+
 Public Const MAX_MENSAJES_FORO   As Byte = 35
 Public Const MAXUSERHECHIZOS     As Byte = 40
 
@@ -1391,6 +1401,12 @@ Public Const MAXSKILLPOINTS As Byte = 100
 ''
 ' Cantidad maxima de mascotas
 Public Const MAXMASCOTAS    As Byte = 3
+
+' Slots totales: domadas (1..MAXMASCOTAS) + invocaciones (MAXMASCOTAS + 1..MAX_SLOTS_MASCOTAS)
+Public Const MAX_SLOTS_MASCOTAS   As Byte = 6
+
+' Cantidad maxima de criaturas activas en el mundo (domadas + invocadas)
+Public Const MAX_MASCOTAS_ACTIVAS As Byte = 3
 
 Public Const MAXCOLLECTIBLECARDS As Integer = 1024
 
@@ -2156,7 +2172,37 @@ Public Type t_Quest
     PermittedFactions As Integer
     GlobalQuestIndex As Integer
     GlobalQuestThresholdNeeded As Long
+    PosMap As Integer
 End Type
+
+Public Enum e_AutoCombatState
+    e_AutoCombatOff = 0
+    e_AutoCombatArmed = 1
+    e_AutoCombatRepeating = 2
+    e_AutoCombatMeditating = 3
+End Enum
+
+Public Enum e_AutoCombatActionType
+    e_AutoCombatActionNone = 0
+    e_AutoCombatActionMelee = 1
+    e_AutoCombatActionRanged = 2
+    e_AutoCombatActionSpell = 3
+End Enum
+
+Public Enum e_AutoCombatStopReason
+    e_AutoCombatStopByUser = 1
+    e_AutoCombatStopUserDied = 2
+    e_AutoCombatStopMapChanged = 3
+    e_AutoCombatStopTargetDied = 4
+    e_AutoCombatStopOutOfRange = 5
+    e_AutoCombatStopOtherTarget = 6
+    e_AutoCombatStopNoArrows = 7
+    e_AutoCombatStopDamageReceived = 8
+    e_AutoCombatStopMeditationCut = 9
+    e_AutoCombatStopCantMeditate = 10
+    e_AutoCombatStopDisconnected = 11
+End Enum
+
 
 ' ******************* RETOS ************************
 Public Enum e_SolicitudRetoEstado
@@ -2184,12 +2230,20 @@ Public Enum e_EquipoReto
     Derecha
 End Enum
 
+Public Enum e_FaseReto
+    Inactiva
+    EnJuego
+    Finalizando
+    DepositoItems
+End Enum
+
 Public Type t_SalaReto
     PosIzquierda As t_WorldPos
     PosDerecha As t_WorldPos
-    IndexBanquero As Integer
+    Banquero As t_NpcReference
     ' -----------------
     EnUso As Boolean
+    Fase As e_FaseReto
     Ronda As Byte
     Puntaje As Integer
     Apuesta As Long
@@ -2599,6 +2653,14 @@ Public Type t_AutomatedAction
     skill As e_Skill
     StartingTime As Long
     IsActive As Boolean
+End Type
+
+Public Type t_AutoCombat
+    State       As e_AutoCombatState
+    ActionType  As e_AutoCombatActionType
+    TargetNpc   As t_NpcReference
+    SpellSlot   As Byte
+    SpellIndex  As Integer
 End Type
 
 'Flags
@@ -3089,8 +3151,8 @@ Public Type t_User
     ComUsu As t_ComercioUsuario
     EmpoCont As Byte
     NroMascotas As Integer
-    MascotasType(1 To MAXMASCOTAS) As Integer
-    MascotasIndex(1 To MAXMASCOTAS) As t_NpcReference
+    MascotasType(1 To MAX_SLOTS_MASCOTAS) As Integer
+    MascotasIndex(1 To MAX_SLOTS_MASCOTAS) As t_NpcReference
     GuildIndex As Integer   'puntero al array global de guilds
     FundandoGuildAlineacion As e_ALINEACION_GUILD     'esto esta aca hasta que se parchee el cliente y se pongan cadenas de datos distintas para cada alineacion
     EscucheClan As Integer
@@ -3112,6 +3174,7 @@ Public Type t_User
     PacketTimers(1 To MAX_PACKET_COUNTERS) As Long
     PacketCounters(1 To MAX_PACKET_COUNTERS) As Long
     AutomatedAction As t_AutomatedAction
+    AutoCombat As t_AutoCombat
 End Type
 
 Public MacroIterations(1 To MAX_PACKET_COUNTERS)      As Long
@@ -3712,6 +3775,8 @@ Public FX()                                   As t_FXdata
 Public SpawnList()                            As t_CriaturasEntrenador
 Public ForbidenNames()                        As String
 Public BlockedWordsDescription()              As String
+Public BlockedWordsGlobalChat()               As String
+Public Const BLOCKED_WORDS_GLOBAL_CHAT_FILE As String = "BlockedWordsGlobalChat.txt"
 Public ArmasHerrero()                         As Integer
 Public ArmadurasHerrero()                     As Integer
 Public BlackSmithElementalRunes()             As Integer

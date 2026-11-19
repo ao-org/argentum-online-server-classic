@@ -695,6 +695,9 @@ Dim obj                         As t_ObjData
 
     With UserList(UserIndex)
 
+        ' Msg654=Pierdes el efecto del mimetismo.
+        Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
+
         If Not bSkin Then
             'Desequipa el item slot del inventario
             If (Slot < LBound(.invent.Object)) Or (Slot > UBound(.invent.Object)) Then
@@ -1168,6 +1171,9 @@ Dim Ropaje                      As Integer
                 End If
             End If
 
+            ' Msg654=Pierdes el efecto del mimetismo.
+            Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
+
             Select Case obj.OBJType
                 Case e_OBJType.otWeapon
                     errordesc = "Arma"
@@ -1630,6 +1636,8 @@ Dim Ropaje                      As Integer
                 '    Call SendData(SendTarget.ToPCAreaWithSound, UserIndex, PrepareMessagePlayWave(tmpSoundItem, .pos.x, .pos.y))
                 'End If
                 If CanEquipSkin(UserIndex, Slot, True) Then
+                    ' Msg654=Pierdes el efecto del mimetismo.
+                    Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
                     Call SkinEquip(UserIndex, Slot, ObjIndex)
                 End If
         End Select
@@ -2035,39 +2043,10 @@ Sub UseInvItem(ByVal UserIndex As Integer, ByVal Slot As Byte, ByVal ByClick As 
                             Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessagePlayWave(SND_BEBER, .pos.x, .pos.y))
                         End If
                     Case e_PotionType.ModifiesHeadRandom    ' Pocion cambio cara
-                        Select Case .genero
-                            Case e_Genero.Hombre
-                                Select Case .raza
-                                    Case e_Raza.Humano
-                                        CabezaFinal = RandomNumber(1, 40)
-                                    Case e_Raza.Elfo
-                                        CabezaFinal = RandomNumber(101, 132)
-                                    Case e_Raza.Drow
-                                        CabezaFinal = RandomNumber(201, 229)
-                                    Case e_Raza.Enano
-                                        CabezaFinal = RandomNumber(301, 329)
-                                    Case e_Raza.Gnomo
-                                        CabezaFinal = RandomNumber(401, 429)
-                                    Case e_Raza.Orco
-                                        CabezaFinal = RandomNumber(501, 529)
-                                End Select
-                            Case e_Genero.Mujer
-                                Select Case .raza
-                                    Case e_Raza.Humano
-                                        CabezaFinal = RandomNumber(50, 80)
-                                    Case e_Raza.Elfo
-                                        CabezaFinal = RandomNumber(150, 179)
-                                    Case e_Raza.Drow
-                                        CabezaFinal = RandomNumber(250, 279)
-                                    Case e_Raza.Gnomo
-                                        CabezaFinal = RandomNumber(350, 379)
-                                    Case e_Raza.Enano
-                                        CabezaFinal = RandomNumber(450, 479)
-                                    Case e_Raza.Orco
-                                        CabezaFinal = RandomNumber(550, 579)
-                                End Select
-                        End Select
+                        CabezaFinal = GetRandomHead(.raza, .genero)
+                        CabezaActual = .OrigChar.head
                         .Char.head = CabezaFinal
+                        .Char.originalhead = CabezaFinal
                         .OrigChar.head = CabezaFinal
                         .OrigChar.originalhead = CabezaFinal    'cabeza final
                         Call ChangeUserChar(UserIndex, .Char.body, CabezaFinal, .Char.Heading, .Char.WeaponAnim, .Char.ShieldAnim, .Char.CascoAnim, .Char.CartAnim, .Char.BackpackAnim)
@@ -2088,40 +2067,11 @@ Sub UseInvItem(ByVal UserIndex As Integer, ByVal Slot As Byte, ByVal ByClick As 
                             Case e_Genero.Mujer
                                 .genero = e_Genero.Hombre
                         End Select
-                        Select Case .genero
-                            Case e_Genero.Hombre
-                                Select Case .raza
-                                    Case e_Raza.Humano
-                                        CabezaFinal = RandomNumber(1, 40)
-                                    Case e_Raza.Elfo
-                                        CabezaFinal = RandomNumber(101, 132)
-                                    Case e_Raza.Drow
-                                        CabezaFinal = RandomNumber(201, 229)
-                                    Case e_Raza.Enano
-                                        CabezaFinal = RandomNumber(301, 329)
-                                    Case e_Raza.Gnomo
-                                        CabezaFinal = RandomNumber(401, 429)
-                                    Case e_Raza.Orco
-                                        CabezaFinal = RandomNumber(501, 529)
-                                End Select
-                            Case e_Genero.Mujer
-                                Select Case .raza
-                                    Case e_Raza.Humano
-                                        CabezaFinal = RandomNumber(50, 80)
-                                    Case e_Raza.Elfo
-                                        CabezaFinal = RandomNumber(150, 179)
-                                    Case e_Raza.Drow
-                                        CabezaFinal = RandomNumber(250, 279)
-                                    Case e_Raza.Gnomo
-                                        CabezaFinal = RandomNumber(350, 379)
-                                    Case e_Raza.Enano
-                                        CabezaFinal = RandomNumber(450, 479)
-                                    Case e_Raza.Orco
-                                        CabezaFinal = RandomNumber(550, 579)
-                                End Select
-                        End Select
+                        CabezaFinal = GetRandomHead(.raza, .genero)
                         .Char.head = CabezaFinal
+                        .Char.originalhead = CabezaFinal
                         .OrigChar.head = CabezaFinal
+                        .OrigChar.originalhead = CabezaFinal
                         Call ChangeUserChar(UserIndex, .Char.body, CabezaFinal, .Char.Heading, .Char.WeaponAnim, .Char.ShieldAnim, .Char.CascoAnim, .Char.CartAnim, .Char.BackpackAnim)
                         'Quitamos del inv el item
                         .Counters.timeFx = 3
@@ -2142,6 +2092,8 @@ Sub UseInvItem(ByVal UserIndex As Integer, ByVal Slot As Byte, ByVal ByClick As 
                             .flags.invisible = 1
                             .Counters.Invisibilidad = obj.DuracionEfecto
                             Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageSetInvisible(.Char.charindex, True, .pos.x, .pos.y))
+                            ' Msg654=Pierdes el efecto del mimetismo.
+                            Call EndMimetism(UserIndex, MSG_PIERDES_EFECTO_MIMETISMO)
                             Call WriteContadores(UserIndex)
                             Call QuitarUserInvItem(UserIndex, Slot, 1)
                             If obj.Snd1 <> 0 Then
@@ -2284,7 +2236,9 @@ Sub UseInvItem(ByVal UserIndex As Integer, ByVal Slot As Byte, ByVal ByClick As 
                         End Select
                         CabezaActual = .OrigChar.head
                         .Char.head = CabezaFinal
+                        .Char.originalhead = CabezaFinal
                         .OrigChar.head = CabezaFinal
+                        .OrigChar.originalhead = CabezaFinal
                         Call ChangeUserChar(UserIndex, .Char.body, CabezaFinal, .Char.Heading, .Char.WeaponAnim, .Char.ShieldAnim, .Char.CascoAnim, .Char.CartAnim, .Char.BackpackAnim)
                         'Quitamos del inv el item
                         If CabezaActual <> CabezaFinal Then
