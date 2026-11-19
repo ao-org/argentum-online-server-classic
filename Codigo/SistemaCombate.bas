@@ -855,11 +855,13 @@ Public Sub UsuarioAtacaNpc(ByVal UserIndex As Integer, ByVal NpcIndex As Integer
             Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessagePlayWave(SND_IMPACTO2, NpcList(NpcIndex).pos.x, NpcList(NpcIndex).pos.y))
         End If
         ' Golpe Paralizador
-        If UserList(UserIndex).flags.Paraliza = 1 And NpcList(NpcIndex).flags.Paralizado = 0 Then
-            If RandomNumber(1, 4) = 1 Then
+        Dim paralyzeAmuletIndex As Integer
+        paralyzeAmuletIndex = UserList(UserIndex).invent.EquippedAmuletAccesoryObjIndex
+        If UserList(UserIndex).flags.Paraliza = 1 And NpcList(npcIndex).flags.Paralizado = 0 And paralyzeAmuletIndex > 0 Then
+            If RandomNumber(1, 100) <= ObjData(paralyzeAmuletIndex).ParalyzeChancePVE Then
                 If NpcList(NpcIndex).flags.AfectaParalisis = 0 Then
                     NpcList(NpcIndex).flags.Paralizado = 1
-                    NpcList(NpcIndex).Contadores.Paralisis = (IntervaloParalizado / 3) * 7
+                    NpcList(npcIndex).Contadores.Paralisis = ObjData(paralyzeAmuletIndex).ParalyzeTimePVE * NPC_AI_TICKS_PER_SECOND
                     If UserList(UserIndex).ChatCombate = 1 Then
                         Call WriteLocaleMsg(UserIndex, MSG_ATTACK_PARALYZED_CREATURE, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_FIGHT)
                     End If
@@ -1948,10 +1950,24 @@ Private Sub UserDañoEspecial(ByVal AtacanteIndex As Integer, ByVal VictimaIndex
             Exit Sub
         End If
     End If
-    If puedeParalizar And (UserList(VictimaIndex).flags.Paralizado = 0) And Not IsSet(UserList(VictimaIndex).flags.StatusMask, eCCInmunity) Then
-        If RandomNumber(1, 100) < 10 Then
+    If puedeParalizar And UserMod.CanMove(UserList(VictimaIndex).flags, UserList(VictimaIndex).Counters) _
+            And Not IsSet(UserList(VictimaIndex).flags.StatusMask, eCCInmunity) _
+            And UserList(VictimaIndex).Counters.TiempoDeInmunidadParalisisNoMagicas = 0 Then
+        Dim paralyzeAmuletIndex As Integer
+        Dim paralyzeChance      As Byte
+        Dim paralyzeTime        As Byte
+        paralyzeChance = DEFAULT_PARALYZE_CHANCE_PVP
+        paralyzeTime = DEFAULT_PARALYZE_TIME_PVP
+        paralyzeAmuletIndex = UserList(AtacanteIndex).invent.EquippedAmuletAccesoryObjIndex
+        If paralyzeAmuletIndex > 0 Then
+            If ObjData(paralyzeAmuletIndex).EfectoMagico = e_MagicItemEffect.eParalize Then
+                paralyzeChance = ObjData(paralyzeAmuletIndex).ParalyzeChancePVP
+                paralyzeTime = ObjData(paralyzeAmuletIndex).ParalyzeTimePVP
+            End If
+        End If
+        If RandomNumber(1, 100) <= paralyzeChance Then
             UserList(VictimaIndex).flags.Paralizado = 1
-            UserList(VictimaIndex).Counters.Paralisis = 6
+            UserList(VictimaIndex).Counters.Paralisis = paralyzeTime - 1   ' EfectoParalisisUser libera un tick despues de llegar a 0
             Call WriteParalizeOK(VictimaIndex)
             UserList(VictimaIndex).Counters.timeFx = 3
             Call SendData(SendTarget.ToPCAliveArea, VictimaIndex, PrepareMessageCreateFX(UserList(VictimaIndex).Char.charindex, 8, 0, UserList(VictimaIndex).pos.x, UserList( _

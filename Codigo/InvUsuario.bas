@@ -762,7 +762,7 @@ Dim obj                         As t_ObjData
                         Case e_MagicItemEffect.eIncreaseDamageToNpc
                             .Stats.MaxHit = .Stats.MaxHit - obj.CuantoAumento
                             .Stats.MinHIT = .Stats.MinHIT - obj.CuantoAumento
-                        Case e_MagicItemEffect.eInmunityToNpcMagic    'Orbe ignea
+                        Case e_MagicItemEffect.eInmunityToNpcMagic    'Inmunidad a magia de NPC (sin objetos que lo usen)
                             .flags.NoMagiaEfecto = 0
                         Case e_MagicItemEffect.eIncinerate
                             .flags.incinera = 0
@@ -4266,3 +4266,40 @@ Public Function TryRepairFishingRod(ByVal UserIndex As Integer, ByVal oldSlot As
 TryRepairFishingRod_Error:
     Call Logging.TraceError(Err.Number, Err.Description, "InvUsuario.TryRepairFishingRod", Erl())
 End Function
+
+Public Sub RestoreMagicItemFlags(ByVal UserIndex As Integer)
+    On Error GoTo RestoreMagicItemFlags_Err
+    With UserList(UserIndex)
+        If .invent.EquippedAmuletAccesoryObjIndex = 0 Then Exit Sub
+        ' Solo efectos de tipo flag: los que suman stats ya quedan persistidos y no se reaplican
+        Select Case ObjData(.invent.EquippedAmuletAccesoryObjIndex).EfectoMagico
+            Case e_MagicItemEffect.eRegenerateHealth
+                .flags.RegeneracionHP = 1
+            Case e_MagicItemEffect.eRegenerateMana
+                .flags.RegeneracionMana = 1
+            Case e_MagicItemEffect.eInmunityToNpcMagic
+                .flags.NoMagiaEfecto = 1
+            Case e_MagicItemEffect.eIncinerate
+                .flags.incinera = 1
+            Case e_MagicItemEffect.eParalize
+                .flags.Paraliza = 1
+            Case e_MagicItemEffect.eProtectedInventory
+                .flags.PendienteDelSacrificio = 1
+            Case e_MagicItemEffect.ePreventMagicWords
+                .flags.NoPalabrasMagicas = 1
+            Case e_MagicItemEffect.ePreventInvisibleDetection
+                .flags.NoDetectable = 1
+            Case e_MagicItemEffect.eIncreaseLearningSkills
+                .flags.PendienteDelExperto = 1
+            Case e_MagicItemEffect.ePoison
+                .flags.Envenena = 1
+            Case e_MagicItemEffect.eRingOfShadows
+                .flags.AnilloOcultismo = 1
+            Case e_MagicItemEffect.eTalkToDead
+                Call SetMask(.flags.StatusMask, e_StatusMask.eTalkToDead)
+        End Select
+    End With
+    Exit Sub
+RestoreMagicItemFlags_Err:
+    Call TraceError(Err.Number, Err.Description, "InvUsuario.RestoreMagicItemFlags", Erl)
+End Sub

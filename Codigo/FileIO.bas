@@ -1277,6 +1277,19 @@ Sub LoadOBJData()
                     If .EfectoMagico = 12 Then
                         .MaxItems = val(Leer.GetValue(ObjKey, "Peces"))
                     End If
+                    If .EfectoMagico = e_MagicItemEffect.eParalize Then
+                        .ParalyzeChancePVE = val(Leer.GetValue(ObjKey, "ParalyzeChancePVE"))
+                        .ParalyzeTimePVE = val(Leer.GetValue(ObjKey, "ParalyzeTimePVE"))
+                        .ParalyzeChancePVP = val(Leer.GetValue(ObjKey, "ParalyzeChancePVP"))
+                        .ParalyzeTimePVP = val(Leer.GetValue(ObjKey, "ParalyzeTimePVP"))
+                        If .ParalyzeChancePVE = 0 Or .ParalyzeTimePVE = 0 Or .ParalyzeChancePVP = 0 Or .ParalyzeTimePVP = 0 Then
+                            Call LogError("obj.dat: OBJ" & Object & " (EfectoMagico=11) sin claves Paralyze* completas, se usan valores por defecto.")
+                            If .ParalyzeChancePVE = 0 Then .ParalyzeChancePVE = DEFAULT_PARALYZE_CHANCE_PVE
+                            If .ParalyzeTimePVE = 0 Then .ParalyzeTimePVE = DEFAULT_PARALYZE_TIME_PVE
+                            If .ParalyzeChancePVP = 0 Then .ParalyzeChancePVP = DEFAULT_PARALYZE_CHANCE_PVP
+                            If .ParalyzeTimePVP = 0 Then .ParalyzeTimePVP = DEFAULT_PARALYZE_TIME_PVP
+                        End If
+                    End If
                 Case e_OBJType.otRecallStones
                     .TipoRuna = val(Leer.GetValue(ObjKey, "Runetype"))
                     .DesdeMap = val(Leer.GetValue(ObjKey, "DesdeMap"))
