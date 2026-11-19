@@ -1980,9 +1980,11 @@ End Sub
 Public Sub WriteFYA(ByVal UserIndex As Integer)
     On Error GoTo WriteFYA_Err
     Call Writer.WriteInt16(ServerPacketID.eFYA)
-    Call Writer.WriteInt8(UserList(UserIndex).Stats.UserAtributos(1))
-    Call Writer.WriteInt8(UserList(UserIndex).Stats.UserAtributos(2))
+    Call Writer.WriteInt8(UserList(UserIndex).Stats.UserAtributos(e_Atributos.Fuerza))
+    Call Writer.WriteInt8(UserList(UserIndex).Stats.UserAtributos(e_Atributos.Agilidad))
     Call Writer.WriteInt16(UserList(UserIndex).flags.DuracionEfecto)
+    Call Writer.WriteInt8(UserList(UserIndex).Stats.UserAtributosBackUP(e_Atributos.Fuerza))
+    Call Writer.WriteInt8(UserList(UserIndex).Stats.UserAtributosBackUP(e_Atributos.Agilidad))
     Call modSendData.SendData(ToIndex, UserIndex)
     Exit Sub
 WriteFYA_Err:
