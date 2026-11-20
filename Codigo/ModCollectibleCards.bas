@@ -47,6 +47,7 @@ Public Sub ResetUserAccountCollectibleCardCollection(ByRef User As t_User)
 
     For i = 1 To MAX_COLLECTIBLE_CARDS_QUANTITY_SIZE
         User.AccountCollectibleCardQuantities(i) = 0
+        User.AccountCollectibleCardSavedQuantities(i) = 0
     Next i
 
     For i = 1 To MAX_COLLECTIBLE_CARDS_BITARRAY_SIZE
@@ -103,6 +104,11 @@ Public Function SetupUserAccountAccountCollectibleCardBitArray(ByRef User As t_U
             Else
                 User.AccountCollectibleCardQuantities(i) = 0
             End If
+            User.AccountCollectibleCardSavedQuantities(i) = User.AccountCollectibleCardQuantities(i)
+        Next i
+    Else
+        For i = 1 To MAX_COLLECTIBLE_CARDS_QUANTITY_SIZE
+            User.AccountCollectibleCardSavedQuantities(i) = 0
         Next i
     End If
 
@@ -123,20 +129,64 @@ End Function
 Public Function SaveUserAccountCollectibleCards(ByVal UserIndex As Integer) As Boolean
     On Error GoTo SaveUserAccountCollectibleCards_Err
     Dim Cmd As ADODB.Command
-    Dim QuantityData(0 To 1023) As Byte
+    Dim RS As ADODB.Recordset
+    Dim QuantityData() As Byte
+    Dim MergedQuantityData(0 To 1023) As Byte
+    Dim CardDelta As Integer
+    Dim NewQuantity As Integer
     Dim i As Integer
+    Dim TransactionStarted As Boolean
+    Dim TransactionLevel As Long
 
     SaveUserAccountCollectibleCards = False
 
-    ' Copy user's quantity array to 0-based array for database (1024 bytes)
+    TransactionLevel = Connection.BeginTrans
+    TransactionStarted = True
+
+    Set Cmd = New ADODB.Command
+    With Cmd
+        .ActiveConnection = Connection
+        .CommandText = GET_ACCOUNT_COLLECTIBLE_CARDS
+        .CommandType = adCmdText
+        .Parameters.Append .CreateParameter("@AccountID", adInteger, adParamInput, , UserList(UserIndex).AccountID)
+        Set RS = .Execute
+    End With
+
+    If RS Is Nothing Then
+        Err.Raise vbObjectError + 1025, "ModCollectibleCards.SaveUserAccountCollectibleCards", "Card quantities query returned no recordset."
+    End If
+
+    If Not RS.EOF And Not RS.BOF Then
+        If IsNull(RS!card_quantities) Then
+            Err.Raise vbObjectError + 1026, "ModCollectibleCards.SaveUserAccountCollectibleCards", "Card quantities blob is NULL."
+        End If
+        QuantityData = RS!card_quantities
+        For i = 0 To MAX_COLLECTIBLE_CARDS_QUANTITY_SIZE - 1
+            If i <= UBound(QuantityData) Then MergedQuantityData(i) = QuantityData(i)
+        Next i
+    End If
+    RS.Close
+    Set RS = Nothing
+    Set Cmd = Nothing
+
+    ' Merge only this session's changes so a stale session cannot overwrite
+    ' cards collected by another character on the same account.
     For i = 1 To MAX_COLLECTIBLE_CARDS_QUANTITY_SIZE
-        QuantityData(i - 1) = UserList(UserIndex).AccountCollectibleCardQuantities(i)
+        CardDelta = CInt(UserList(UserIndex).AccountCollectibleCardQuantities(i)) - _
+                    CInt(UserList(UserIndex).AccountCollectibleCardSavedQuantities(i))
+        NewQuantity = CInt(MergedQuantityData(i - 1))
+        If UserList(UserIndex).AccountCollectibleCardSavedQuantities(i) > NewQuantity Then
+            NewQuantity = UserList(UserIndex).AccountCollectibleCardSavedQuantities(i)
+        End If
+        If CardDelta > 0 Then NewQuantity = NewQuantity + CardDelta
+        If NewQuantity > 10 Then NewQuantity = 10
+        MergedQuantityData(i - 1) = CByte(NewQuantity)
     Next i
-    
+
     ' Create command to upsert the blob
     Set Cmd = New ADODB.Command
     With Cmd
-        .ActiveConnection = Connection ' Your SQLite connection object
+        .ActiveConnection = Connection
         .CommandText = UPSERT_NEW_COLLECTIBLE_CARDS
         .CommandType = adCmdText
         
@@ -144,19 +194,32 @@ Public Function SaveUserAccountCollectibleCards(ByVal UserIndex As Integer) As B
         .Parameters.Append .CreateParameter("@AccountID", adInteger, adParamInput, , UserList(UserIndex).AccountID)
         
         ' Add quantity blob parameter (1024 bytes)
-        .Parameters.Append .CreateParameter("@QuantityData", adVarBinary, adParamInput, MAX_COLLECTIBLE_CARDS_QUANTITY_SIZE, QuantityData)
+        .Parameters.Append .CreateParameter("@QuantityData", adVarBinary, adParamInput, MAX_COLLECTIBLE_CARDS_QUANTITY_SIZE, MergedQuantityData)
         
         ' Execute the upsert
         .Execute
     End With
-    
+
+    Call Connection.CommitTrans
+    TransactionStarted = False
+
+    For i = 1 To MAX_COLLECTIBLE_CARDS_QUANTITY_SIZE
+        UserList(UserIndex).AccountCollectibleCardQuantities(i) = MergedQuantityData(i - 1)
+        UserList(UserIndex).AccountCollectibleCardSavedQuantities(i) = MergedQuantityData(i - 1)
+    Next i
+
     SaveUserAccountCollectibleCards = True
     Set Cmd = Nothing
     Exit Function
 
 SaveUserAccountCollectibleCards_Err:
     Call TraceError(Err.Number, Err.Description, "ModCollectibleCards.SaveUserAccountCollectibleCards", Erl)
+    If Not RS Is Nothing Then
+        If RS.State <> adStateClosed Then RS.Close
+    End If
+    If TransactionStarted Then Call Connection.RollbackTrans
     Set Cmd = Nothing
+    Set RS = Nothing
 End Function
 
 Public Function AddCollectibleCardToUser(ByVal UserIndex As Integer, ByRef ObjCard As t_Obj) As Boolean
@@ -174,7 +237,6 @@ Public Function AddCollectibleCardToUser(ByVal UserIndex As Integer, ByRef ObjCa
             Exit Function
         End If
     
-        .flags.DirtyCollectibleCardCollection = True
         ' Increment the quantity for this specific card (cap at 255 per byte)
         Dim Inc As Integer
         If ObjData(ObjCard.ObjIndex).CollectibleCardRarity = e_CardRarity.Bronce Then
@@ -187,12 +249,13 @@ Public Function AddCollectibleCardToUser(ByVal UserIndex As Integer, ByRef ObjCa
             Inc = 0
         End If
 
-        If Inc > 0 Then
-            Dim NewQty As Integer
-            NewQty = .AccountCollectibleCardQuantities(CardIndex) + Inc
-            If NewQty > 10 Then NewQty = 10
-            .AccountCollectibleCardQuantities(CardIndex) = CByte(NewQty)
-        End If
+        If Inc <= 0 Then Exit Function
+
+        Dim NewQty As Integer
+        NewQty = .AccountCollectibleCardQuantities(CardIndex) + Inc
+        If NewQty > 10 Then NewQty = 10
+        .AccountCollectibleCardQuantities(CardIndex) = CByte(NewQty)
+        .flags.DirtyCollectibleCardCollection = True
     End With
     
     AddCollectibleCardToUser = True

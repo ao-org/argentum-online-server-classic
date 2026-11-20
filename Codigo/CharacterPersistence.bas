@@ -1495,6 +1495,17 @@ Public Sub SaveChangesInUser(ByVal UserIndex As Integer)
         Call SaveCharacterInventorySkinsDB(UserIndex, QueryBreakdown)
         Call PerformTimeLimitCheck(PerformanceTimer, "SaveChangesInUser [" & .name & "] inventory skins update id:" & .Id, 50)
 
+        If IsFeatureEnabled("collectible_cards") And .flags.DirtyCollectibleCardCollection Then
+            If SaveUserAccountCollectibleCards(UserIndex) Then
+                .flags.DirtyCollectibleCardCollection = False
+                If LenB(QueryBreakdown) <> 0 Then QueryBreakdown = QueryBreakdown & "; "
+                QueryBreakdown = QueryBreakdown & "save collectible cards: saved"
+            Else
+                If LenB(QueryBreakdown) <> 0 Then QueryBreakdown = QueryBreakdown & "; "
+                QueryBreakdown = QueryBreakdown & "save collectible cards: failed"
+            End If
+        End If
+
         .Counters.LastSave = GetTickCountRaw()
 
         Call PerformTimeLimitCheck(TotalPerformanceTimer, "SaveChangesInUser [" & .name & "] total id:" & .Id, 50)
