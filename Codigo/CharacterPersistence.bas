@@ -309,7 +309,7 @@ Public Function LoadCharacterFromDB(ByVal UserIndex As Integer, Optional ByRef f
         Call SetupUserQuests(UserList(UserIndex))
         Call SetupUserQuestsDone(UserList(UserIndex))
         If IsFeatureEnabled("collectible_cards") Then
-            Call SetupUserAccountAccountCollectibleCardBitArray(UserList(UserIndex))
+            If Not SetupUserAccountAccountCollectibleCardBitArray(UserList(UserIndex)) Then Exit Function
         End If
         ' Load additional inventories.
         inventoryLoaded = LoadCharacterInventory(UserIndex, failureReason)
@@ -645,8 +645,14 @@ Public Sub SaveCharacterDB(ByVal UserIndex As Integer, Optional ByVal Logout As 
         Call InitUserPersistSnapshot(UserIndex)
         If IsFeatureEnabled("collectible_cards") Then
             If .flags.DirtyCollectibleCardCollection Then
-                Call SaveUserAccountCollectibleCards(UserIndex, QueryBreakDown)
-                .flags.DirtyCollectibleCardCollection = False
+                If SaveUserAccountCollectibleCards(UserIndex) Then
+                    .flags.DirtyCollectibleCardCollection = False
+                    If LenB(QueryBreakdown) <> 0 Then QueryBreakdown = QueryBreakdown & "; "
+                    QueryBreakdown = QueryBreakdown & "save collectible cards: saved"
+                Else
+                    If LenB(QueryBreakdown) <> 0 Then QueryBreakdown = QueryBreakdown & "; "
+                    QueryBreakdown = QueryBreakdown & "save collectible cards: failed"
+                End If
             Else
                 If LenB(QueryBreakdown) <> 0 Then QueryBreakdown = QueryBreakdown & "; "
                 QueryBreakdown = QueryBreakdown & "save collectible cards: skipped"

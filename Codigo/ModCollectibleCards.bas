@@ -54,13 +54,15 @@ Public Sub ResetUserAccountCollectibleCardCollection(ByRef User As t_User)
     Next i
 End Sub
 
-Public Function SetupUserAccountAccountCollectibleCardBitArray(ByRef User As t_User)
+Public Function SetupUserAccountAccountCollectibleCardBitArray(ByRef User As t_User) As Boolean
     On Error GoTo GetUserCollectibleCards_Err
     Dim RS As ADODB.Recordset
     Dim Cmd As ADODB.Command
     Dim i As Integer
     Dim QuantityData() As Byte
-    
+
+    SetupUserAccountAccountCollectibleCardBitArray = False
+
     ' Wipe any card data left in memory by a previous account that occupied
     ' this slot before loading the real collection for the current account.
     ' Without this, an account with no saved blob (EOF on the SELECT below)
@@ -80,27 +82,34 @@ Public Function SetupUserAccountAccountCollectibleCardBitArray(ByRef User As t_U
         ' Execute and get recordset
         Set RS = .Execute
     End With
-    
-    If Not RS Is Nothing Then
-        If Not RS.EOF And Not RS.BOF Then
-            ' Load quantity array (1024 bytes)
-            If Not IsNull(RS!card_quantities) Then
-                ' Get the quantity blob data
-                QuantityData = RS!card_quantities
-                
-                ' Copy quantity data into the user's byte array
-                For i = 1 To MAX_COLLECTIBLE_CARDS_QUANTITY_SIZE
-                    If i <= UBound(QuantityData) + 1 Then
-                        User.AccountCollectibleCardQuantities(i) = QuantityData(i - 1) ' Arrays are 0-based from DB
-                    Else
-                        User.AccountCollectibleCardQuantities(i) = 0
-                    End If
-                Next i
-            End If
-        End If
-        RS.Close
+
+    If RS Is Nothing Then
+        Call LogDatabaseError("Unable to load collectible cards for account " & User.AccountID & ": query returned no recordset.")
+        GoTo GetUserCollectibleCards_Exit
     End If
+
+    If Not RS.EOF And Not RS.BOF Then
+        If IsNull(RS!card_quantities) Then
+            Err.Raise vbObjectError + 1024, "ModCollectibleCards.SetupUserAccountAccountCollectibleCardBitArray", "Card quantities blob is NULL."
+        End If
+
+        ' Get the quantity blob data
+        QuantityData = RS!card_quantities
+
+        ' Copy quantity data into the user's byte array
+        For i = 1 To MAX_COLLECTIBLE_CARDS_QUANTITY_SIZE
+            If i <= UBound(QuantityData) + 1 Then
+                User.AccountCollectibleCardQuantities(i) = QuantityData(i - 1) ' Arrays are 0-based from DB
+            Else
+                User.AccountCollectibleCardQuantities(i) = 0
+            End If
+        Next i
+    End If
+
+    RS.Close
+    SetupUserAccountAccountCollectibleCardBitArray = True
     
+GetUserCollectibleCards_Exit:
     Set RS = Nothing
     Set Cmd = Nothing
     Exit Function
@@ -111,12 +120,14 @@ GetUserCollectibleCards_Err:
     Set Cmd = Nothing
 End Function
 
-Public Function SaveUserAccountCollectibleCards(ByVal UserIndex As Integer, ByVal QueryBreakDown As String)
+Public Function SaveUserAccountCollectibleCards(ByVal UserIndex As Integer) As Boolean
     On Error GoTo SaveUserAccountCollectibleCards_Err
     Dim Cmd As ADODB.Command
     Dim QuantityData(0 To 1023) As Byte
     Dim i As Integer
-    
+
+    SaveUserAccountCollectibleCards = False
+
     ' Copy user's quantity array to 0-based array for database (1024 bytes)
     For i = 1 To MAX_COLLECTIBLE_CARDS_QUANTITY_SIZE
         QuantityData(i - 1) = UserList(UserIndex).AccountCollectibleCardQuantities(i)
@@ -139,6 +150,7 @@ Public Function SaveUserAccountCollectibleCards(ByVal UserIndex As Integer, ByVa
         .Execute
     End With
     
+    SaveUserAccountCollectibleCards = True
     Set Cmd = Nothing
     Exit Function
 
