@@ -29,7 +29,7 @@ Option Explicit
 
 Private Const APUESTA_MAXIMA            As Long = 100000000
 Private Const OBJ_POCION_ROJA           As Integer = 38
-Private Const NIVEL_MINIMO_ELO          As Byte = 33
+Private Const NIVEL_MINIMO_ELO          As Byte = 35
 Private Const FACTOR_ELO                As Single = 0.1
 Private Const RONDAS_MAXIMAS            As Byte = 3
 Private Const VICTORIAS_PARA_GANAR      As Integer = 2
@@ -347,7 +347,7 @@ Private Sub IniciarReto(ByVal Oferente As Integer, ByVal Sala As Integer)
             Call WriteLocaleMsg(tUser.ArrayIndex, MSG_OTORGAS_MONEDAS_ORO_POZO_RETO, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos, ApuestaStr) ' Msg1966=Otorgas ¬1 monedas de oro al pozo del reto.
             ' Desmontamos
             If UserList(tUser.ArrayIndex).flags.Montado <> 0 Then
-                Call DoMontar(tUser.ArrayIndex, ObjData(UserList(tUser.ArrayIndex).invent.EquippedSaddleObjIndex), UserList(tUser.ArrayIndex).invent.EquippedSaddleSlot)
+                Call DoMontar(tUser.ArrayIndex, ObjData(UserList(tUser.ArrayIndex).invent.EquippedSaddleObjIndex), UserList(tUser.ArrayIndex).invent.EquippedSaddleSlot, Forzado:=True)
             End If
             ' Dejamos de navegar
             If UserList(tUser.ArrayIndex).flags.Nadando <> 0 Or UserList(tUser.ArrayIndex).flags.Navegando <> 0 Then

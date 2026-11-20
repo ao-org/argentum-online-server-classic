@@ -1193,7 +1193,7 @@ Sub ClearAndSaveUser(ByVal UserIndex As Integer)
         Call ClearAttackerNpc(UserIndex)
         errordesc = "ERROR AL DESMONTAR"
         If .flags.Montado > 0 Then
-            Call DoMontar(UserIndex, ObjData(.invent.EquippedSaddleObjIndex), .invent.EquippedSaddleSlot)
+            Call DoMontar(UserIndex, ObjData(.invent.EquippedSaddleObjIndex), .invent.EquippedSaddleSlot, Forzado:=True)
         End If
         errordesc = "ERROR AL CANCELAR SOLICITUD DE RETO"
         If .flags.EnReto Then
@@ -1245,8 +1245,8 @@ Sub ClearAndSaveUser(ByVal UserIndex As Integer)
     End With
     Exit Sub
 ErrHandler:
-    'Call LogError("Error en CloseUser. Número " & Err.Number & ". Descripción: " & Err.Description & ". Detalle:" & errordesc)
-    Call TraceError(Err.Number, Err.Description & ". Detalle:" & errordesc, Erl)
+    'Call LogError("Error en CloseUser. Número " & Err.Number & ". Descripción: " & Err.Description & ". Detalle:" & errorDesc)
+    Call TraceError(Err.Number, Err.Description & ". Detalle:" & errorDesc, "TCP.ClearAndSaveUser", Erl)
     Resume Next ' TODO: Provisional hasta solucionar bugs graves
 End Sub
 
@@ -1291,8 +1291,8 @@ Sub CloseUser(ByVal UserIndex As Integer)
     End With
     Exit Sub
 ErrHandler:
-    'Call LogError("Error en CloseUser. Número " & Err.Number & ". Descripción: " & Err.Description & ". Detalle:" & errordesc)
-    Call TraceError(Err.Number, Err.Description & ". Detalle:" & errordesc, Erl)
+    'Call LogError("Error en CloseUser. Número " & Err.Number & ". Descripción: " & Err.Description & ". Detalle:" & errorDesc)
+    Call TraceError(Err.Number, Err.Description & ". Detalle:" & errorDesc, "TCP.ClearAndSaveUser", Erl)
     Resume Next ' TODO: Provisional hasta solucionar bugs graves
 End Sub
 
