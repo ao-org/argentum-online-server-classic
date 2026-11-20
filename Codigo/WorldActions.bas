@@ -99,6 +99,13 @@ Public Sub CompletePendingAction(ByVal UserIndex As Integer)
     Dim obj  As t_ObjData
     Dim Slot As Byte
     With UserList(UserIndex)
+        ' Desde un reto solo se sale con /ABANDONAR: una runa o /HOGAR iniciados antes no pueden completarse adentro
+        If .flags.EnReto Then
+            'Msg1275= No podés regresar desde un reto. Usa /ABANDONAR para admitir la derrota y volver a la ciudad.
+            Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_REGRESAR_DESDE_RETO_USA_ABANDONAR_ADMITIR_DERROTA, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos)
+            Call CancelPendingAction(UserIndex)
+            Exit Sub
+        End If
         Select Case .Accion.TipoAccion
             Case e_AccionBarra.Runa
                 obj = ObjData(.Accion.RunaObj)
@@ -148,6 +155,24 @@ Public Sub CompletePendingAction(ByVal UserIndex As Integer)
     Exit Sub
 EndProgrammedAction_Err:
     Call TraceError(Err.Number, Err.Description, "WorldActions.CompletePendingAction", Erl)
+End Sub
+
+Public Sub CancelPendingAction(ByVal UserIndex As Integer)
+    On Error GoTo CancelPendingAction_Err
+    With UserList(UserIndex)
+        .Counters.TimerBarra = 0
+        Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessageParticleFX(.Char.charindex, .Accion.Particula, .Counters.TimerBarra, True))
+        Call SendData(SendTarget.ToPCArea, UserIndex, PrepareMessageBarFx(.Char.charindex, .Counters.TimerBarra, e_AccionBarra.CancelarAccion))
+        .Accion.AccionPendiente = False
+        .Accion.Particula = 0
+        .Accion.TipoAccion = e_AccionBarra.CancelarAccion
+        .Accion.HechizoPendiente = 0
+        .Accion.RunaObj = 0
+        .Accion.ObjSlot = 0
+    End With
+    Exit Sub
+CancelPendingAction_Err:
+    Call TraceError(Err.Number, Err.Description, "WorldActions.CancelPendingAction", Erl)
 End Sub
 
 Public Sub HandleWorldAction(ByVal UserIndex As Integer, ByVal Map As Integer, ByVal x As Integer, ByVal y As Integer)

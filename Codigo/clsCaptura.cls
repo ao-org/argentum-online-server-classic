@@ -488,6 +488,11 @@ Public Sub inscribirse(ByVal UserIndex As Integer)
             Call WriteLocaleMsg(UserIndex, MSG_NO_TIENES_ORO_SUFICIENTE_INGRESAR_EVENTO, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos)
             Exit Sub
         End If
+        If .flags.EnReto Then
+            'Msg1974= Ya te encuentras en un reto.
+            Call WriteLocaleMsg(UserIndex, MSG_ENCUENTRAS_RETO, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos, vbNullString)
+            Exit Sub
+        End If
         If .flags.jugando_captura = 1 Then
             'Msg927= Ya estás anotado en el evento.
             Call WriteLocaleMsg(UserIndex, MSG_ANOTADO_EVENTO, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos)

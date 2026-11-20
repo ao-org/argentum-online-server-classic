@@ -2145,6 +2145,11 @@ Sub UseInvItem(ByVal UserIndex As Integer, ByVal Slot As Byte, ByVal ByClick As 
                         End If
                         ' Poción runa
                     Case 14
+                        If .flags.EnReto Then
+                            'Msg1275= No podés regresar desde un reto. Usa /ABANDONAR para admitir la derrota y volver a la ciudad.
+                            Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_REGRESAR_DESDE_RETO_USA_ABANDONAR_ADMITIR_DERROTA, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos)
+                            Exit Sub
+                        End If
                         If MapData(.pos.x, .pos.y, .pos.Map).trigger = CARCEL Then
                             ' Msg691=No podés usar la runa estando en la cárcel.
                             Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_USAR_RUNA_ESTANDO_CARCEL, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
@@ -2608,6 +2613,11 @@ Sub UseInvItem(ByVal UserIndex As Integer, ByVal Slot As Byte, ByVal ByClick As 
             Case e_OBJType.otDonator
                 Select Case obj.Subtipo
                     Case 1
+                        If .flags.EnReto Then
+                            'Msg1275= No podés regresar desde un reto. Usa /ABANDONAR para admitir la derrota y volver a la ciudad.
+                            Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_REGRESAR_DESDE_RETO_USA_ABANDONAR_ADMITIR_DERROTA, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos)
+                            Exit Sub
+                        End If
                         If .Counters.Pena <> 0 Then
                             ' Msg691=No podés usar la runa estando en la cárcel.
                             Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_USAR_RUNA_ESTANDO_CARCEL, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
@@ -2666,6 +2676,11 @@ Sub UseInvItem(ByVal UserIndex As Integer, ByVal Slot As Byte, ByVal ByClick As 
                 Call QuitarUserInvItem(UserIndex, Slot, 1)
                 Call UpdateUserInv(False, UserIndex, Slot)
             Case e_OBJType.otRecallStones
+                If .flags.EnReto Then
+                    'Msg1275= No podés regresar desde un reto. Usa /ABANDONAR para admitir la derrota y volver a la ciudad.
+                    Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_REGRESAR_DESDE_RETO_USA_ABANDONAR_ADMITIR_DERROTA, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos)
+                    Exit Sub
+                End If
                 If .Counters.Pena <> 0 Then
                     ' Msg691=No podés usar la runa estando en la cárcel.
                     Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_USAR_RUNA_ESTANDO_CARCEL, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
@@ -3044,6 +3059,11 @@ Public Sub ResurrectWithItem(ByVal UserIndex As Integer)
         TargetUser = .flags.TargetUser.ArrayIndex
         If UserList(TargetUser).flags.Muerto = 0 Then
             Call WriteLocaleMsg(UserIndex, MsgInvalidTarget, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+            Exit Sub
+        End If
+        If .flags.EnReto Or UserList(targetUser).flags.EnReto Then
+            'Msg807= No podés revivir a nadie durante un reto.
+            Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_REVIVIR_NADIE_DURANTE_RETO, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos)
             Exit Sub
         End If
         CanHelpResult = UserMod.CanHelpUser(UserIndex, TargetUser)

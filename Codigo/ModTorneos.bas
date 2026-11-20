@@ -96,6 +96,11 @@ End Sub
 Public Sub ParticiparTorneo(ByVal UserIndex As Integer)
     On Error GoTo ParticiparTorneo_Err
     Dim IndexVacio As Byte
+    If UserList(UserIndex).flags.EnReto Then
+        'Msg1974= Ya te encuentras en un reto.
+        Call WriteLocaleMsg(UserIndex, MSG_ENCUENTRAS_RETO, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos, vbNullString)
+        Exit Sub
+    End If
     IndexVacio = BuscarIndexFreeTorneo
     Torneo.IndexParticipantes(IndexVacio) = UserIndex
     Torneo.participantes = Torneo.participantes + 1
