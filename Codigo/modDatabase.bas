@@ -843,9 +843,75 @@ SanitizeNullValue_Err:
     Call TraceError(Err.Number, Err.Description, "modDatabase.SanitizeNullValue", Erl)
 End Function
 
-Public Sub SetMessageInfoDatabase(ByVal name As String, ByVal Message As String)
-    Call Execute("update user set message_info = concat(message_info, ?) where upper(name) = ?;", Message, UCase$(name))
-End Sub
+Public Function SetMessageInfoDatabase(ByVal name As String, ByVal Message As String) As Boolean
+    On Error GoTo SetMessageInfoDatabase_Err
+
+    Dim CurrentMessageInfo As String
+    Dim RS                 As ADODB.Recordset
+
+    ' Read and rewrite synchronously so the persisted column is bounded before
+    ' reporting success. LimitGmReplyHistory preserves ordinary pending messages.
+    Set RS = Query("select message_info from user where upper(name) = ?;", UCase$(name))
+    If RS Is Nothing Then
+        Call LogDatabaseError("SetMessageInfoDatabase could not read user: " & name)
+        Exit Function
+    End If
+
+    If RS.EOF Then
+        Call RS.Close
+        Call LogDatabaseError("SetMessageInfoDatabase did not find user: " & name)
+        Exit Function
+    End If
+
+    CurrentMessageInfo = CStr(SanitizeNullValue(RS!message_info, vbNullString))
+    Call RS.Close
+    Set RS = Nothing
+
+    SetMessageInfoDatabase = ReplaceMessageInfoDatabase(name, UserMod.MergeGmReplyHistory(CurrentMessageInfo, Message))
+    Exit Function
+
+SetMessageInfoDatabase_Err:
+    If Not RS Is Nothing Then
+        If RS.State <> adStateClosed Then
+            Call RS.Close
+        End If
+    End If
+    Call LogDatabaseError("Database Error: " & Err.Number & " - " & Err.Description & " - SetMessageInfoDatabase. UserName: " & name)
+End Function
+
+Public Function ReplaceMessageInfoDatabase(ByVal name As String, ByVal Message As String) As Boolean
+    On Error GoTo ReplaceMessageInfoDatabase_Err
+
+    ' message_info is deliberately excluded from the asynchronous character-save
+    ' query. All writes to this column use the synchronous connection so an older
+    ' pending character save cannot overwrite a newly appended GM reply.
+    Dim Command  As New ADODB.Command
+    Dim Affected As Long
+
+    Command.ActiveConnection = Connection
+    If LenB(Message) = 0 Then
+        Command.CommandText = "update user set message_info = '' where upper(name) = ?;"
+    Else
+        Command.CommandText = "update user set message_info = ? where upper(name) = ?;"
+    End If
+    Command.CommandType = adCmdText
+    Command.Prepared = True
+    If LenB(Message) <> 0 Then
+        Command.Parameters.Append CreateParameter(Message, adParamInput)
+    End If
+    Command.Parameters.Append CreateParameter(UCase$(name), adParamInput)
+
+    Call Command.Execute(Affected, , adExecuteNoRecords)
+    ReplaceMessageInfoDatabase = (Affected <> 0)
+
+    If Not ReplaceMessageInfoDatabase Then
+        Call LogDatabaseError("ReplaceMessageInfoDatabase did not find user: " & name)
+    End If
+    Exit Function
+
+ReplaceMessageInfoDatabase_Err:
+    Call LogDatabaseError("Database Error: " & Err.Number & " - " & Err.Description & " - ReplaceMessageInfoDatabase. UserName: " & name)
+End Function
 
 Public Sub ChangeNameDatabase(ByVal CurName As String, ByVal NewName As String)
     Call SetUserValue(CurName, "name", NewName)
