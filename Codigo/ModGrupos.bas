@@ -27,6 +27,7 @@ Attribute VB_Name = "ModGrupos"
 '
 Public Grupo            As Tgrupo
 Private UniqueIdCounter As Long
+Private Const MAX_GROUP_MARKERS As Byte = 6
 
 Private Function GetNextId() As Long
     UniqueIdCounter = (UniqueIdCounter + 1) And &H7FFFFFFF
@@ -90,10 +91,14 @@ Public Sub InvitarMiembro(ByVal UserIndex As Integer, ByVal InvitadoIndex As Int
     If UserList(InvitadoIndex).flags.RespondiendoPregunta = False Then
         Call WriteLocaleMsg(UserIndex, MSG_GROUP_REQUEST_SENT_WAIT_RESPONSE, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
         Call WriteLocaleMsg(InvitadoIndex, MSG_INVITO_UNIRSE_SU_GRUPO, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO, Remitente.name) ' Msg2049="¬1 te invitó a unirse a su grupo."
+        If Not UserList(UserIndex).Grupo.EnGrupo Then
+            Call SetUserRef(UserList(UserIndex).Grupo.Lider, UserIndex)
+            Call SetUserRef(UserList(UserIndex).Grupo.Miembros(1), UserIndex)
+            UserList(UserIndex).Grupo.CantidadMiembros = 1
+        End If
         With UserList(InvitadoIndex)
             Call SetUserRef(.Grupo.PropuestaDe, UserIndex)
             .flags.pregunta = 1
-            Call SetUserRef(.Grupo.Lider, UserIndex)
         End With
         Call WritePreguntaBox(InvitadoIndex, MSG_TE_INVITO_A_UNIRSE_A_SU_GRUPO_DESEAS_UNIRTE, Remitente.name) 'Msg1595= ¬1 te invito a unirse a su grupo. ¿Deseas unirte?
         UserList(InvitadoIndex).flags.RespondiendoPregunta = True
@@ -104,15 +109,11 @@ Public Sub InvitarMiembro(ByVal UserIndex As Integer, ByVal InvitadoIndex As Int
 InvitarMiembro_Err:
     Call TraceError(Err.Number, Err.Description, "ModGrupos.InvitarMiembro", Erl)
 End Sub
+
 Public Sub EcharMiembro(ByVal UserIndex As Integer, ByVal Indice As Byte)
     On Error GoTo EcharMiembro_Err
-    Dim i              As Long
-    Dim LoopC          As Long
-    Dim indexviejo     As Byte
     Dim UserIndexEchar As Integer
-    Dim GroupLider     As Integer
     With UserList(UserIndex).Grupo
-        GroupLider = .Lider.ArrayIndex
         If Not .EnGrupo Then
             Call WriteLocaleMsg(UserIndex, MSG_NINGUN_GRUPO, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
             Exit Sub
@@ -121,104 +122,22 @@ Public Sub EcharMiembro(ByVal UserIndex As Integer, ByVal Indice As Byte)
             Call WriteLocaleMsg(UserIndex, MSG_PODES_ECHAR_USUARIOS_GRUPO, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
             Exit Sub
         End If
-        UserIndexEchar = UserList(.Lider.ArrayIndex).Grupo.Miembros(Indice + 1).ArrayIndex
+        If Indice >= .CantidadMiembros Then Exit Sub
+        UserIndexEchar = .Miembros(Indice + 1).ArrayIndex
+        If UserIndexEchar = 0 Then Exit Sub
         If UserIndexEchar = UserIndex Then
             Call WriteLocaleMsg(UserIndex, MSG_PODES_EXPULSARTE_TI_MISMO, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
             Exit Sub
         End If
-        
-        ' Guardar cantidad original antes de modificar
-        Dim OriginalCount As Integer
-        OriginalCount = .CantidadMiembros
-        
-        For i = 1 To UBound(.Miembros)
-            If UserIndexEchar = .Miembros(i).ArrayIndex Then
-                Call ClearUserRef(.Miembros(i))
-                indexviejo = i
-                For LoopC = indexviejo To 5
-                    .Miembros(LoopC) = .Miembros(LoopC + 1)
-                Next LoopC
-                i = UBound(.Miembros)
-                Call ClearUserRef(.Miembros(i))
-                Exit For
-            End If
-        Next i
-        .CantidadMiembros = .CantidadMiembros - 1
-        
-        ' Enviar x=0 para ocultar marcadores del miembro expulsado
-        Dim j As Integer
-        For j = 1 To OriginalCount
-            Call WriteUbicacion(UserIndexEchar, j, 0)
-        Next j
     End With
-    
-    With UserList(UserIndexEchar)
-        Call WriteLocaleMsg(UserIndex, MSG_FUE_EXPULSADO_GRUPO, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO, .Name)
-        Call WriteLocaleMsg(UserIndexEchar, MSG_REMOVED_FROM_GROUP, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
-        .Grupo.EnGrupo = False
-        Call SetUserRef(.Grupo.Lider, 0)
-        Call SetUserRef(.Grupo.PropuestaDe, 0)
-        .Grupo.CantidadMiembros = 0
-        Call SetUserRef(.Grupo.Miembros(1), 0)
-        Call RefreshCharStatus(UserIndexEchar)
-        .Grupo.Id = -1
-        If MapInfo(.pos.Map).OnlyGroups And MapInfo(.pos.Map).Salida.Map <> 0 Then
-            Call WriteLocaleMsg(UserIndexEchar, MSG_DEBES_ESTAR_GRUPO_PERMANECER_MAPA, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
-            Call WarpUserChar(UserIndexEchar, MapInfo(.pos.Map).Salida.Map, MapInfo(.pos.Map).Salida.x, MapInfo(.pos.Map).Salida.y, True)
-        End If
-    End With
-    
-    With UserList(UserIndex).Grupo
-        ' Enviar posiciones actualizadas a todos los miembros restantes
-        Dim a As Integer
-        Dim b As Integer
-        For a = 1 To .CantidadMiembros
-            Dim TargetMemberIndex As Integer
-            TargetMemberIndex = .Miembros(a).ArrayIndex
-            
-            ' PRIMERO: Limpiar todos los marcadores de este miembro (incluido el del que fue expulsado)
-            For b = 1 To OriginalCount
-                Call WriteUbicacion(TargetMemberIndex, b, 0)
-            Next b
-            
-            ' LUEGO: Enviar solo las posiciones de los miembros que quedan (excepto el suyo propio)
-            For b = 1 To .CantidadMiembros
-                Dim SourceMemberIndex As Integer
-                SourceMemberIndex = .Miembros(b).ArrayIndex
-                
-                ' NO enviar la posición de un miembro a sí mismo.
-                ' Solo compartir ubicación si ambos miembros están en el mismo mapa;
-                ' en caso contrario, mantener el marcador limpio.
-                If TargetMemberIndex <> SourceMemberIndex Then
-                    If UserList(TargetMemberIndex).Pos.Map = UserList(SourceMemberIndex).Pos.Map Then
-                        Call WriteUbicacion(TargetMemberIndex, b, SourceMemberIndex)
-                    Else
-                        Call WriteUbicacion(TargetMemberIndex, b, 0)
-                    End If
-                End If
-            Next b
-        Next a
-        
-        If .CantidadMiembros = 1 Then
-            Call WriteLocaleMsg(UserIndex, MSG_GROUP_DISBANDED_ALL_MEMBERS_LEFT, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
-            .EnGrupo = False
-            Call SetUserRef(.Lider, 0)
-            Call SetUserRef(.PropuestaDe, 0)
-            .CantidadMiembros = 0
-            Call SetUserRef(.Miembros(1), 0)
-            .Id = -1
-            Call modSendData.SendData(ToIndex, UserIndex, PrepareUpdateGroupInfo(UserIndex))
-            Dim LiderMap As Integer: LiderMap = UserList(UserIndex).pos.Map
-            If MapInfo(LiderMap).OnlyGroups And MapInfo(LiderMap).Salida.Map <> 0 Then
-                Call WriteLocaleMsg(UserIndex, MSG_DEBES_ESTAR_GRUPO_PERMANECER_MAPA_2056, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
-                Call WarpUserChar(UserIndex, MapInfo(LiderMap).Salida.Map, MapInfo(LiderMap).Salida.x, MapInfo(LiderMap).Salida.y, True)
-            End If
-        End If
-    End With
-    
-    Call RefreshCharStatus(UserIndex)
-    Call modSendData.SendData(ToGroup, GroupLider, PrepareUpdateGroupInfo(GroupLider))
+    If Not RemoveMemberFromGroup(UserIndex, UserIndexEchar) Then Exit Sub
+    Call WriteLocaleMsg(UserIndex, MSG_FUE_EXPULSADO_GRUPO, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO, UserList(UserIndexEchar).name)
+    Call WriteLocaleMsg(UserIndexEchar, MSG_REMOVED_FROM_GROUP, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
+    Call ClearGroupMarkers(UserIndexEchar)
+    Call RefreshCharStatus(UserIndexEchar)
     Call modSendData.SendData(ToIndex, UserIndexEchar, PrepareUpdateGroupInfo(UserIndexEchar))
+    Call ExpelFromGroupOnlyMap(UserIndexEchar)
+    Call HandleGroupAfterMemberLeft(UserIndex)
     Exit Sub
 EcharMiembro_Err:
     Call TraceError(Err.Number, Err.Description, "ModGrupos.EcharMiembro", Erl)
@@ -226,98 +145,28 @@ End Sub
 
 Public Sub SalirDeGrupo(ByVal UserIndex As Integer)
     On Error GoTo SalirDeGrupo_Err
-    Dim i          As Long
-    Dim LoopC      As Long
-    Dim indexviejo As Byte
-    With UserList(UserIndex)
-        If Not .Grupo.EnGrupo Then
-            Call WriteLocaleMsg(UserIndex, MSG_NINGUN_GRUPO_2057, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
-            Exit Sub
-        End If
-        
-        ' Guardar cantidad original antes de modificar
-        Dim OriginalCount As Integer
-        OriginalCount = UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros
-        
-        .Grupo.EnGrupo = False
-        .Grupo.Id = -1
-        For i = 1 To UBound(.Grupo.Miembros)
-            If .name = UserList(UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(i).ArrayIndex).name Then
-                Call ClearUserRef(UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(i))
-                indexviejo = i
-                For LoopC = indexviejo To 5
-                    UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(LoopC) = UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(LoopC + 1)
-                Next LoopC
-                i = UBound(.Grupo.Miembros)
-                Call ClearUserRef(.Grupo.Miembros(i))
-                Exit For
-            End If
-        Next i
-        UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros = UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros - 1
-        
-        ' Enviar x=0 para ocultar marcadores del usuario que sale
-        Dim j As Integer
-        For j = 1 To OriginalCount
-            Call WriteUbicacion(UserIndex, j, 0)
-        Next j
-        
-        ' Enviar posiciones actualizadas a todos los miembros restantes
-        Dim a As Integer
-        Dim b As Integer
-        For a = 1 To UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros
-            Dim TargetMemberIndex As Integer
-            TargetMemberIndex = UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(a).ArrayIndex
-            
-            ' PRIMERO: Limpiar todos los marcadores de este miembro (incluido el del que se fue)
-            For b = 1 To OriginalCount
-                Call WriteUbicacion(TargetMemberIndex, b, 0)
-            Next b
-            
-            ' LUEGO: Enviar solo las posiciones de los miembros que quedan (excepto el suyo propio)
-            For b = 1 To UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros
-                Dim SourceMemberIndex As Integer
-                SourceMemberIndex = UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(b).ArrayIndex
-                
-                ' NO enviar la posición de un miembro a sí mismo
-                If TargetMemberIndex <> SourceMemberIndex Then
-                    ' Solo compartir ubicación entre miembros que estén en el mismo mapa.
-                    ' Si están en mapas distintos, el marcador ya quedó limpio en el paso anterior.
-                    If UserList(TargetMemberIndex).pos.Map = UserList(SourceMemberIndex).pos.Map Then
-                        Call WriteUbicacion(TargetMemberIndex, b, SourceMemberIndex)
-                    End If
-                End If
-            Next b
-        Next a
-        
-        Call WriteLocaleMsg(UserIndex, MSG_REMOVED_FROM_GROUP, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
-        Call WriteLocaleMsg(.Grupo.Lider.ArrayIndex, MSG_USER_LEFT_GROUP, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO, .name)
-        If UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros = 1 Then
-            Call WriteLocaleMsg(.Grupo.Lider.ArrayIndex, MSG_GROUP_DISBANDED_ALL_MEMBERS_LEFT, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
-            Call WriteUbicacion(.Grupo.Lider.ArrayIndex, 1, 0)
-            UserList(.Grupo.Lider.ArrayIndex).Grupo.Id = -1
-            UserList(.Grupo.Lider.ArrayIndex).Grupo.EnGrupo = False
-            Call SetUserRef(UserList(.Grupo.Lider.ArrayIndex).Grupo.Lider, 0)
-            Call SetUserRef(UserList(.Grupo.Lider.ArrayIndex).Grupo.PropuestaDe, 0)
-            UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros = 0
-            Call SetUserRef(UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(1), 0)
-            Call RefreshCharStatus(.Grupo.Lider.ArrayIndex)
-            Call modSendData.SendData(ToIndex, .Grupo.Lider.ArrayIndex, PrepareUpdateGroupInfo(.Grupo.Lider.ArrayIndex))
-            Dim LiderMap As Integer: LiderMap = UserList(.Grupo.Lider.ArrayIndex).pos.Map
-            If MapInfo(LiderMap).OnlyGroups And MapInfo(LiderMap).Salida.Map <> 0 Then
-                Call WriteLocaleMsg(.Grupo.Lider.ArrayIndex, MSG_DEBES_ESTAR_GRUPO_PERMANECER_MAPA_2059, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
-                Call WarpUserChar(.Grupo.Lider.ArrayIndex, MapInfo(LiderMap).Salida.Map, MapInfo(LiderMap).Salida.x, MapInfo(LiderMap).Salida.y, True)
-            End If
-        End If
-        Call WriteUbicacion(UserIndex, 1, 0)
-        Call modSendData.SendData(ToGroup, .Grupo.Lider.ArrayIndex, PrepareUpdateGroupInfo(.Grupo.Lider.ArrayIndex))
-        Call SetUserRef(.Grupo.Lider, 0)
-        Call modSendData.SendData(ToIndex, UserIndex, PrepareUpdateGroupInfo(UserIndex))
-        If MapInfo(.pos.Map).OnlyGroups And MapInfo(.pos.Map).Salida.Map <> 0 Then
-            Call WriteLocaleMsg(UserIndex, MSG_DEBES_ESTAR_GRUPO_PERMANECER_MAPA_2060, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
-            Call WarpUserChar(UserIndex, MapInfo(.pos.Map).Salida.Map, MapInfo(.pos.Map).Salida.x, MapInfo(.pos.Map).Salida.y, True)
-        End If
-    End With
+    Dim LiderIndex As Integer
+    If Not UserList(UserIndex).Grupo.EnGrupo Then
+        Call WriteLocaleMsg(UserIndex, MSG_NINGUN_GRUPO_2057, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
+        Exit Sub
+    End If
+    If Not IsValidUserRef(UserList(UserIndex).Grupo.Lider) Then
+        Call ResetUserGroupData(UserIndex)
+        Exit Sub
+    End If
+    LiderIndex = UserList(UserIndex).Grupo.Lider.ArrayIndex
+    If LiderIndex = UserIndex Then
+        Call FinalizarGrupo(UserIndex)
+        Exit Sub
+    End If
+    If Not RemoveMemberFromGroup(LiderIndex, UserIndex) Then Exit Sub
+    Call WriteLocaleMsg(UserIndex, MSG_REMOVED_FROM_GROUP, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
+    Call WriteLocaleMsg(LiderIndex, MSG_USER_LEFT_GROUP, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO, UserList(UserIndex).name)
+    Call ClearGroupMarkers(UserIndex)
     Call RefreshCharStatus(UserIndex)
+    Call modSendData.SendData(ToIndex, UserIndex, PrepareUpdateGroupInfo(UserIndex))
+    Call ExpelFromGroupOnlyMap(UserIndex)
+    Call HandleGroupAfterMemberLeft(LiderIndex)
     Exit Sub
 SalirDeGrupo_Err:
     Call TraceError(Err.Number, Err.Description, "ModGrupos.SalirDeGrupo", Erl)
@@ -325,143 +174,260 @@ End Sub
 
 Public Sub SalirDeGrupoForzado(ByVal UserIndex As Integer)
     On Error GoTo SalirDeGrupoForzado_Err
-    Dim i          As Long
-    Dim LoopC      As Long
-    Dim indexviejo As Byte
-    Dim GroupLider As Integer
-    With UserList(UserIndex)
-        .Grupo.EnGrupo = False
-        .Grupo.Id = -1
-        For i = 1 To 6
-            If .name = UserList(UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(i).ArrayIndex).name Then
-                Call SetUserRef(UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(i), 0)
-                indexviejo = i
-                For LoopC = indexviejo To 5
-                    UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(LoopC) = UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(LoopC + 1)
-                Next LoopC
-                Exit For
-            End If
-        Next i
-        UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros = UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros - 1
-        Call modSendData.SendData(ToGroup, .Grupo.Lider.ArrayIndex, PrepareUpdateGroupInfo(.Grupo.Lider.ArrayIndex))
-        Call modSendData.SendData(ToIndex, UserIndex, PrepareUpdateGroupInfo(UserIndex))
-        Dim a As Long
-        For a = 1 To UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros
-            Call WriteUbicacion(UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(a).ArrayIndex, indexviejo, 0)
-        Next a
-        Call WriteLocaleMsg(.Grupo.Lider.ArrayIndex, MSG_USER_LEFT_GROUP, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO, .name)
-        If UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros = 1 Then
-            Call WriteLocaleMsg(.Grupo.Lider.ArrayIndex, MSG_GROUP_DISBANDED_ALL_MEMBERS_LEFT, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
-            Call WriteUbicacion(.Grupo.Lider.ArrayIndex, 1, 0)
-            UserList(.Grupo.Lider.ArrayIndex).Grupo.EnGrupo = False
-            Call SetUserRef(UserList(.Grupo.Lider.ArrayIndex).Grupo.Lider, 0)
-            Call SetUserRef(UserList(.Grupo.Lider.ArrayIndex).Grupo.PropuestaDe, 0)
-            UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros = 0
-            Call SetUserRef(UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(1), 0)
-            UserList(.Grupo.Lider.ArrayIndex).Grupo.Id = -1
-            Call RefreshCharStatus(.Grupo.Lider.ArrayIndex)
-            Dim LiderMap As Integer: LiderMap = UserList(.Grupo.Lider.ArrayIndex).pos.Map
-            If MapInfo(LiderMap).OnlyGroups And MapInfo(LiderMap).Salida.Map <> 0 Then
-                Call WriteLocaleMsg(.Grupo.Lider.ArrayIndex, MSG_DEBES_ESTAR_GRUPO_PERMANECER_MAPA_2061, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO) ' Msg2061="Debes estar en un grupo para permanecer en este mapa."
-                Call WarpUserChar(.Grupo.Lider.ArrayIndex, MapInfo(LiderMap).Salida.Map, MapInfo(LiderMap).Salida.x, MapInfo(LiderMap).Salida.y, True)
-            End If
-        End If
-        If MapInfo(.pos.Map).OnlyGroups And MapInfo(.pos.Map).Salida.Map <> 0 Then
-            Call WriteLocaleMsg(UserIndex, MSG_DEBES_ESTAR_GRUPO_PERMANECER_MAPA_2062, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO) ' Msg2062="Debes estar en un grupo para permanecer en este mapa."
-            Call WarpUserChar(UserIndex, MapInfo(.pos.Map).Salida.Map, MapInfo(.pos.Map).Salida.x, MapInfo(.pos.Map).Salida.y, True)
-        End If
-    End With
+    Dim LiderIndex As Integer
+    If Not UserList(UserIndex).Grupo.EnGrupo Then Exit Sub
+    If Not IsValidUserRef(UserList(UserIndex).Grupo.Lider) Then
+        Call ResetUserGroupData(UserIndex)
+        Exit Sub
+    End If
+    LiderIndex = UserList(UserIndex).Grupo.Lider.ArrayIndex
+    If LiderIndex = UserIndex Then
+        Call FinalizarGrupo(UserIndex)
+        Exit Sub
+    End If
+    If Not RemoveMemberFromGroup(LiderIndex, UserIndex) Then Exit Sub
+    Call WriteLocaleMsg(LiderIndex, MSG_USER_LEFT_GROUP, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO, UserList(UserIndex).name)
+    Call ExpelFromGroupOnlyMap(UserIndex)
+    Call HandleGroupAfterMemberLeft(LiderIndex)
     Exit Sub
 SalirDeGrupoForzado_Err:
     Call TraceError(Err.Number, Err.Description, "ModGrupos.SalirDeGrupoForzado", Erl)
 End Sub
+
 Public Sub FinalizarGrupo(ByVal LiderIndex As Integer)
     On Error GoTo FinalizarGrupo_Err
-    Dim i As Integer
-    Dim OriginalMemberCount As Integer
-    
-    ' Guardar la cantidad original de miembros antes de modificar nada
-    OriginalMemberCount = UserList(LiderIndex).Grupo.CantidadMiembros
-    
-    ' Procesar a todos los miembros del grupo
-    For i = 1 To OriginalMemberCount
-        Dim MemberIndex As Integer: MemberIndex = UserList(LiderIndex).Grupo.Miembros(i).ArrayIndex
-        With UserList(MemberIndex)
-            Dim j As Integer
-            For j = 1 To OriginalMemberCount
-                Call WriteUbicacion(MemberIndex, j, 0)
-            Next j
-            
-            ' Enviar actualización del grupo a cada miembro
-            Call modSendData.SendData(ToIndex, MemberIndex, PrepareUpdateGroupInfo(MemberIndex))
-            
-            ' Limpiar datos del grupo para este miembro
-            .Grupo.EnGrupo = False
-            .Grupo.Id = -1
-            Call SetUserRef(.Grupo.Lider, 0)
-            Call SetUserRef(.Grupo.PropuestaDe, 0)
-            
-            If MemberIndex = LiderIndex Then
-                Call WriteLocaleMsg(LiderIndex, MSG_DISUELTO_GRUPO, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO) ' Msg2063="Has disuelto el grupo."
-            Else
-                Call WriteLocaleMsg(MemberIndex, MSG_LIDER_HA_ABANDONADO_GRUPO_GRUPO_DISUELVE, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO) ' Msg2064="El líder ha abandonado el grupo. El grupo se disuelve."
+    Dim memberSlot  As Byte
+    Dim memberIndex As Integer
+    If Not UserList(LiderIndex).Grupo.EnGrupo Then
+        Call ResetUserGroupData(LiderIndex)
+        Exit Sub
+    End If
+    With UserList(LiderIndex).Grupo
+        For memberSlot = 1 To .CantidadMiembros
+            If IsValidUserRef(.Miembros(memberSlot)) Then
+                memberIndex = .Miembros(memberSlot).ArrayIndex
+                If memberIndex <> LiderIndex Then
+                    Call DisbandGroupMember(memberIndex, False)
+                End If
             End If
-            
-            If MapInfo(.pos.Map).OnlyGroups And MapInfo(.pos.Map).Salida.Map <> 0 Then
-                Call WriteLocaleMsg(MemberIndex, MSG_DEBES_ESTAR_GRUPO_PERMANECER_MAPA_2065, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO) ' Msg2065="Debes estar en un grupo para permanecer en este mapa."
-                Call WarpUserChar(MemberIndex, MapInfo(.pos.Map).Salida.Map, MapInfo(.pos.Map).Salida.x, MapInfo(.pos.Map).Salida.y, True)
-            Else
-                Call RefreshCharStatus(MemberIndex)
-            End If
-        End With
-    Next i
-    
-    ' Limpiar los datos del grupo del líder
-    UserList(LiderIndex).Grupo.EnGrupo = False
-    UserList(LiderIndex).Grupo.Id = -1
-    Call SetUserRef(UserList(LiderIndex).Grupo.Lider, 0)
-    Call SetUserRef(UserList(LiderIndex).Grupo.PropuestaDe, 0)
-    UserList(LiderIndex).Grupo.CantidadMiembros = 0
-    
-    ' Enviar actualización final al líder (ahora recibirá GroupSize = 0)
-    Call modSendData.SendData(ToIndex, LiderIndex, PrepareUpdateGroupInfo(LiderIndex))
-    
+        Next memberSlot
+    End With
+    Call DisbandGroupMember(LiderIndex, True)
     Exit Sub
 FinalizarGrupo_Err:
     Call TraceError(Err.Number, Err.Description, "ModGrupos.FinalizarGrupo", Erl)
 End Sub
 
+Private Function GetGroupSlot(ByVal LiderIndex As Integer, ByVal UserIndex As Integer) As Byte
+    On Error GoTo GetGroupSlot_Err
+    Dim memberSlot As Byte
+    With UserList(LiderIndex).Grupo
+        For memberSlot = 1 To .CantidadMiembros
+            If .Miembros(memberSlot).ArrayIndex = UserIndex Then
+                GetGroupSlot = memberSlot
+                Exit Function
+            End If
+        Next memberSlot
+    End With
+    Exit Function
+GetGroupSlot_Err:
+    Call TraceError(Err.Number, Err.Description, "ModGrupos.GetGroupSlot", Erl)
+End Function
+
+Private Function GetDisplaySlot(ByVal memberSlot As Byte, ByVal receiverSlot As Byte) As Byte
+    On Error GoTo GetDisplaySlot_Err
+    If memberSlot > receiverSlot Then
+        GetDisplaySlot = memberSlot - 1
+    Else
+        GetDisplaySlot = memberSlot
+    End If
+    Exit Function
+GetDisplaySlot_Err:
+    Call TraceError(Err.Number, Err.Description, "ModGrupos.GetDisplaySlot", Erl)
+End Function
+
+Private Sub ClearGroupMarkers(ByVal UserIndex As Integer)
+    On Error GoTo ClearGroupMarkers_Err
+    Dim markerSlot As Byte
+    For markerSlot = 1 To MAX_GROUP_MARKERS
+        Call WriteUbicacion(UserIndex, markerSlot, 0)
+    Next markerSlot
+    Exit Sub
+ClearGroupMarkers_Err:
+    Call TraceError(Err.Number, Err.Description, "ModGrupos.ClearGroupMarkers", Erl)
+End Sub
+
+Private Sub RefreshGroupMarkers(ByVal LiderIndex As Integer)
+    On Error GoTo RefreshGroupMarkers_Err
+    Dim receiverSlot  As Byte
+    Dim memberSlot    As Byte
+    Dim receiverIndex As Integer
+    Dim memberIndex   As Integer
+    With UserList(LiderIndex).Grupo
+        For receiverSlot = 1 To .CantidadMiembros
+            If IsValidUserRef(.Miembros(receiverSlot)) Then
+                receiverIndex = .Miembros(receiverSlot).ArrayIndex
+                Call ClearGroupMarkers(receiverIndex)
+                For memberSlot = 1 To .CantidadMiembros
+                    If memberSlot <> receiverSlot Then
+                        If IsValidUserRef(.Miembros(memberSlot)) Then
+                            memberIndex = .Miembros(memberSlot).ArrayIndex
+                            If UserList(memberIndex).pos.map = UserList(receiverIndex).pos.map Then
+                                Call WriteUbicacion(receiverIndex, GetDisplaySlot(memberSlot, receiverSlot), memberIndex)
+                            End If
+                        End If
+                    End If
+                Next memberSlot
+            End If
+        Next receiverSlot
+    End With
+    Exit Sub
+RefreshGroupMarkers_Err:
+    Call TraceError(Err.Number, Err.Description, "ModGrupos.RefreshGroupMarkers", Erl)
+End Sub
+
+Private Sub ResetUserGroupData(ByVal UserIndex As Integer)
+    On Error GoTo ResetUserGroupData_Err
+    Dim memberSlot As Byte
+    With UserList(UserIndex).Grupo
+        .EnGrupo = False
+        .id = -1
+        .CantidadMiembros = 0
+        Call SetUserRef(.Lider, 0)
+        Call SetUserRef(.PropuestaDe, 0)
+        For memberSlot = 1 To UBound(.Miembros)
+            Call SetUserRef(.Miembros(memberSlot), 0)
+        Next memberSlot
+    End With
+    Exit Sub
+ResetUserGroupData_Err:
+    Call TraceError(Err.Number, Err.Description, "ModGrupos.ResetUserGroupData", Erl)
+End Sub
+
+Private Function RemoveMemberFromGroup(ByVal LiderIndex As Integer, ByVal UserIndex As Integer) As Boolean
+    On Error GoTo RemoveMemberFromGroup_Err
+    Dim memberSlot As Byte
+    Dim shiftSlot  As Byte
+    memberSlot = GetGroupSlot(LiderIndex, UserIndex)
+    If memberSlot = 0 Then Exit Function
+    With UserList(LiderIndex).Grupo
+        For shiftSlot = memberSlot To .CantidadMiembros - 1
+            .Miembros(shiftSlot) = .Miembros(shiftSlot + 1)
+        Next shiftSlot
+        Call ClearUserRef(.Miembros(.CantidadMiembros))
+        .CantidadMiembros = .CantidadMiembros - 1
+    End With
+    Call ResetUserGroupData(UserIndex)
+    RemoveMemberFromGroup = True
+    Exit Function
+RemoveMemberFromGroup_Err:
+    Call TraceError(Err.Number, Err.Description, "ModGrupos.RemoveMemberFromGroup", Erl)
+End Function
+
+Private Sub ExpelFromGroupOnlyMap(ByVal UserIndex As Integer)
+    On Error GoTo ExpelFromGroupOnlyMap_Err
+    With UserList(UserIndex)
+        If MapInfo(.pos.map).OnlyGroups And MapInfo(.pos.map).Salida.map <> 0 Then
+            Call WriteLocaleMsg(UserIndex, MSG_DEBES_ESTAR_GRUPO_PERMANECER_MAPA, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
+            Call WarpUserChar(UserIndex, MapInfo(.pos.map).Salida.map, MapInfo(.pos.map).Salida.x, MapInfo(.pos.map).Salida.y, True)
+        End If
+    End With
+    Exit Sub
+ExpelFromGroupOnlyMap_Err:
+    Call TraceError(Err.Number, Err.Description, "ModGrupos.ExpelFromGroupOnlyMap", Erl)
+End Sub
+
+Private Sub HandleGroupAfterMemberLeft(ByVal LiderIndex As Integer)
+    On Error GoTo HandleGroupAfterMemberLeft_Err
+    Call RefreshGroupMarkers(LiderIndex)
+    If UserList(LiderIndex).Grupo.CantidadMiembros <= 1 Then
+        Call WriteLocaleMsg(LiderIndex, MSG_GROUP_DISBANDED_ALL_MEMBERS_LEFT, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
+        Call ResetUserGroupData(LiderIndex)
+        Call RefreshCharStatus(LiderIndex)
+        Call modSendData.SendData(ToIndex, LiderIndex, PrepareUpdateGroupInfo(LiderIndex))
+        Call ExpelFromGroupOnlyMap(LiderIndex)
+    Else
+        Call modSendData.SendData(ToGroup, LiderIndex, PrepareUpdateGroupInfo(LiderIndex))
+    End If
+    Exit Sub
+HandleGroupAfterMemberLeft_Err:
+    Call TraceError(Err.Number, Err.Description, "ModGrupos.HandleGroupAfterMemberLeft", Erl)
+End Sub
+
+Private Sub DisbandGroupMember(ByVal UserIndex As Integer, ByVal IsLeader As Boolean)
+    On Error GoTo DisbandGroupMember_Err
+    Call ResetUserGroupData(UserIndex)
+    Call ClearGroupMarkers(UserIndex)
+    If IsLeader Then
+        Call WriteLocaleMsg(UserIndex, MSG_DISUELTO_GRUPO, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
+    Else
+        Call WriteLocaleMsg(UserIndex, MSG_LIDER_HA_ABANDONADO_GRUPO_GRUPO_DISUELVE, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
+    End If
+    Call modSendData.SendData(ToIndex, UserIndex, PrepareUpdateGroupInfo(UserIndex))
+    Call RefreshCharStatus(UserIndex)
+    Call ExpelFromGroupOnlyMap(UserIndex)
+    Exit Sub
+DisbandGroupMember_Err:
+    Call TraceError(Err.Number, Err.Description, "ModGrupos.DisbandGroupMember", Erl)
+End Sub
+
 Public Sub CompartirUbicacion(ByVal UserIndex As Integer)
     On Error GoTo CompartirUbicacion_Err
-    Dim i       As Byte
-    Dim a       As Byte
-    Dim indexpj As Byte
-    Dim Lider   As t_User
-    With UserList(UserIndex)
-        Lider = UserList(.Grupo.Lider.ArrayIndex)
-        For a = 1 To Lider.Grupo.CantidadMiembros
-            If Lider.Grupo.Miembros(a).ArrayIndex = UserIndex Then
-                indexpj = a
-            End If
-        Next a
-        For i = 1 To Lider.Grupo.CantidadMiembros
-            If Lider.Grupo.Miembros(i).ArrayIndex <> UserIndex Then
-                If UserList(Lider.Grupo.Miembros(i).ArrayIndex).pos.Map = .pos.Map Then
-                    Call WriteUbicacion(Lider.Grupo.Miembros(i).ArrayIndex, indexpj, UserIndex)
-                    'Si va al mapa del compañero
-                    Call WriteUbicacion(UserIndex, i, Lider.Grupo.Miembros(i).ArrayIndex)
-                Else
-                    ' Le borro la ubicacion a ellos
-                    Call WriteUbicacion(Lider.Grupo.Miembros(i).ArrayIndex, indexpj, 0)
-                    ' Le borro la ubicacion a mi
-                    Call WriteUbicacion(UserIndex, i, 0)
+    Dim LiderIndex  As Integer
+    Dim ownSlot     As Byte
+    Dim memberSlot  As Byte
+    Dim memberIndex As Integer
+    If Not IsValidUserRef(UserList(UserIndex).Grupo.Lider) Then Exit Sub
+    LiderIndex = UserList(UserIndex).Grupo.Lider.ArrayIndex
+    ownSlot = GetGroupSlot(LiderIndex, UserIndex)
+    If ownSlot = 0 Then Exit Sub
+    With UserList(LiderIndex).Grupo
+        For memberSlot = 1 To .CantidadMiembros
+            If memberSlot <> ownSlot Then
+                If IsValidUserRef(.Miembros(memberSlot)) Then
+                    memberIndex = .Miembros(memberSlot).ArrayIndex
+                    If UserList(memberIndex).pos.map = UserList(UserIndex).pos.map Then
+                        Call WriteUbicacion(memberIndex, GetDisplaySlot(ownSlot, memberSlot), UserIndex)
+                        Call WriteUbicacion(UserIndex, GetDisplaySlot(memberSlot, ownSlot), memberIndex)
+                    Else
+                        Call WriteUbicacion(memberIndex, GetDisplaySlot(ownSlot, memberSlot), 0)
+                        Call WriteUbicacion(UserIndex, GetDisplaySlot(memberSlot, ownSlot), 0)
+                    End If
                 End If
             End If
-        Next i
+        Next memberSlot
     End With
     Exit Sub
 CompartirUbicacion_Err:
     Call TraceError(Err.Number, Err.Description, "ModGrupos.CompartirUbicacion", Erl)
+End Sub
+
+Public Sub BroadcastMemberPosition(ByVal UserIndex As Integer)
+    On Error GoTo BroadcastMemberPosition_Err
+    Dim LiderIndex  As Integer
+    Dim ownSlot     As Byte
+    Dim memberSlot  As Byte
+    Dim memberIndex As Integer
+    If Not UserList(UserIndex).Grupo.EnGrupo Then Exit Sub
+    If Not IsValidUserRef(UserList(UserIndex).Grupo.Lider) Then Exit Sub
+    LiderIndex = UserList(UserIndex).Grupo.Lider.ArrayIndex
+    ownSlot = GetGroupSlot(LiderIndex, UserIndex)
+    If ownSlot = 0 Then Exit Sub
+    With UserList(LiderIndex).Grupo
+        For memberSlot = 1 To .CantidadMiembros
+            If memberSlot <> ownSlot Then
+                If IsValidUserRef(.Miembros(memberSlot)) Then
+                    memberIndex = .Miembros(memberSlot).ArrayIndex
+                    If UserList(memberIndex).pos.map = UserList(UserIndex).pos.map Then
+                        Call WriteUbicacion(memberIndex, GetDisplaySlot(ownSlot, memberSlot), UserIndex)
+                    End If
+                End If
+            End If
+        Next memberSlot
+    End With
+    Exit Sub
+BroadcastMemberPosition_Err:
+    Call TraceError(Err.Number, Err.Description, "ModGrupos.BroadcastMemberPosition", Erl)
 End Sub
 
 Public Sub GroupCreateSuccess(ByVal LiderIndex As Integer)
@@ -475,6 +441,13 @@ End Sub
 Public Sub AddUserToGRoup(ByVal UserIndex As Integer, ByVal GroupLiderIndex As Integer)
     On Error GoTo AddUserToGRoup_Err
     Dim Index As Byte
+    If UserList(GroupLiderIndex).Grupo.CantidadMiembros >= UBound(UserList(GroupLiderIndex).Grupo.Miembros) Then
+        Call WriteLocaleMsg(UserIndex, MSG_SERVIDOR_SOLICITUD_GRUPO_INVALIDA_REINTENTE, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
+        Call WriteLocaleMsg(GroupLiderIndex, MSG_PUEDES_INVITAR_MAS_PERSONAS_LIMITE, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO, CStr(UBound(UserList(GroupLiderIndex).Grupo.Miembros)))
+        Call SetUserRef(UserList(UserIndex).Grupo.Lider, 0)
+        Call SetUserRef(UserList(UserIndex).Grupo.PropuestaDe, 0)
+        Exit Sub
+    End If
     For Index = 1 To UserList(GroupLiderIndex).Grupo.CantidadMiembros
         If UserList(GroupLiderIndex).Grupo.Miembros(Index).ArrayIndex = UserIndex Then
             Exit Sub

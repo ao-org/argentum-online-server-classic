@@ -2620,6 +2620,7 @@ Sub MoveUserToSide(ByVal UserIndex As Integer, ByVal Heading As e_Heading)
         If MoveUserChar(UserIndex, Heading) Then
             ' Le aviso al usuario que fue movido
             Call WriteForceCharMove(UserIndex, Heading)
+            Call BroadcastMemberPosition(UserIndex)
             Exit Sub
         End If
         ' Si falló, intento moverlo para el lado opuesto
@@ -2627,6 +2628,7 @@ Sub MoveUserToSide(ByVal UserIndex As Integer, ByVal Heading As e_Heading)
         If MoveUserChar(UserIndex, Heading) Then
             ' Le aviso al usuario que fue movido
             Call WriteForceCharMove(UserIndex, Heading)
+            Call BroadcastMemberPosition(UserIndex)
             Exit Sub
         End If
         ' Si ambos fallan, entonces lo dejo en la posición válida más cercana

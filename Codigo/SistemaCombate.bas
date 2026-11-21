@@ -1850,18 +1850,12 @@ End Function
 
 Private Sub CalcularDarOroGrupal(ByVal UserIndex As Integer, ByVal GiveGold As Long)
     On Error GoTo CalcularDarOroGrupal_Err
-    '***************************************************
-    'Autor: Nacho (Integer)
-    'Last Modification: 03/09/06 Nacho
-    'Reescribi gran parte del Sub
-    'Ahora, da toda la experiencia del npc mientras este vivo.
-    '***************************************************
     Dim OroDar As Long
     OroDar = GiveGold * SvrConfig.GetValue("GoldMult")
     Dim orobackup As Long
     orobackup = OroDar
     Dim i     As Byte
-    Dim Index As Byte
+    Dim Index As Integer
     Dim Lider As Integer
     Lider = UserList(UserIndex).Grupo.Lider.ArrayIndex
     OroDar = OroDar / UserList(UserList(UserIndex).Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros
