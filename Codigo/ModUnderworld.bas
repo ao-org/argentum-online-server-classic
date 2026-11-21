@@ -14,18 +14,21 @@ Private Const UNDERWORLD_PORTAL_EXIT_OFFSET_Y As Integer = 4
 Private m_IsUnderworldOpen   As Boolean
 Private m_PhaseStartTick     As Long
 Private m_PhaseDurationMs    As Long
-Private m_CloseWarningSent   As Boolean
+Private m_PhaseWarningSent   As Boolean
+Private m_IsRandomCycleMode  As Boolean
 ' Configuracion (minutos)
 Private m_OpenMinMinutes     As Long
 Private m_OpenMaxMinutes     As Long
 Private m_ClosedMinMinutes   As Long
 Private m_ClosedMaxMinutes   As Long
 Private m_CloseWarningMinutes As Long
+Private m_OpenWarningMinutes  As Long
 
 Public Sub MaybeSpawnUnderworldPortals()
     On Error GoTo MaybeSpawnUnderworldPortals_Err
-    If Not IsFeatureEnabled("underworld") Then Exit Sub
     If Not IsUnderworldInitialized Then Exit Sub
+    ' Modo fijado al arrancar: sin ciclo, los portales quedan abiertos siempre
+    If Not m_IsRandomCycleMode Then Exit Sub
     Dim nowRaw As Long
     nowRaw = GetTickCountRaw()
     If TicksElapsed(m_UnderworldLastSpawnTimestamp, nowRaw) < IntervalUnderworldSpawn Then Exit Sub
@@ -37,15 +40,20 @@ Public Sub MaybeSpawnUnderworldPortals()
     If m_IsUnderworldOpen Then
         If elapsedMs >= m_PhaseDurationMs Then
             Call CloseUnderworld(nowRaw)
-        ElseIf Not m_CloseWarningSent Then
+        ElseIf Not m_PhaseWarningSent Then
             If m_PhaseDurationMs - elapsedMs <= m_CloseWarningMinutes * UNDERWORLD_MS_PER_MINUTE Then
                 Call modSendData.SendData(SendTarget.ToAll, 0, PrepareMessageLocaleMsg(MSG_UNDERWORLD_CLOSING_SOON, CStr(m_CloseWarningMinutes), e_TextChannel.TEXTCHANNEL_FACTION, e_FontTypeNames.FONTTYPE_CITIZEN))
-                m_CloseWarningSent = True
+                m_PhaseWarningSent = True
             End If
         End If
     Else
         If elapsedMs >= m_PhaseDurationMs Then
             Call OpenUnderworld(nowRaw)
+        ElseIf Not m_PhaseWarningSent Then
+            If m_PhaseDurationMs - elapsedMs <= m_OpenWarningMinutes * UNDERWORLD_MS_PER_MINUTE Then
+                Call modSendData.SendData(SendTarget.ToAll, 0, PrepareMessageLocaleMsg(MSG_UNDERWORLD_OPENING_SOON, CStr(m_OpenWarningMinutes), e_TextChannel.TEXTCHANNEL_FACTION, e_FontTypeNames.FONTTYPE_CITIZEN))
+                m_PhaseWarningSent = True
+            End If
         End If
     End If
     Call PerformTimeLimitCheck(PerformanceTimer, "ModUnderworld.MaybeSpawnUnderworldPortals", 100)
@@ -87,7 +95,7 @@ Private Sub StartUnderworldPhase(ByVal IsOpenPhase As Boolean, ByVal StartTick A
     m_IsUnderworldOpen = IsOpenPhase
     m_PhaseStartTick = StartTick
     m_PhaseDurationMs = durationMinutes * UNDERWORLD_MS_PER_MINUTE
-    m_CloseWarningSent = False
+    m_PhaseWarningSent = False
     Exit Sub
 StartUnderworldPhase_Err:
     Call TraceError(Err.Number, Err.Description, "ModUnderworld.StartUnderworldPhase", Erl)
@@ -238,18 +246,27 @@ Public Sub LoadUnderworldModule()
         Call LogError("Invalid UnderworldMapPool in UnderworldMapPool.dat")
         Exit Sub
     End If
-    m_OpenMinMinutes = val(IniFile.GetValue("INIT", "OpenMinMinutes"))
-    m_OpenMaxMinutes = val(IniFile.GetValue("INIT", "OpenMaxMinutes"))
-    m_ClosedMinMinutes = val(IniFile.GetValue("INIT", "ClosedMinMinutes"))
-    m_ClosedMaxMinutes = val(IniFile.GetValue("INIT", "ClosedMaxMinutes"))
-    m_CloseWarningMinutes = val(IniFile.GetValue("INIT", "CloseWarningMinutes"))
-    If Not IsValidMinutesRange(m_OpenMinMinutes, m_OpenMaxMinutes) Or Not IsValidMinutesRange(m_ClosedMinMinutes, m_ClosedMaxMinutes) Then
-        Call LogError("Invalid open/closed minutes in UnderworldMapPool.dat")
-        Exit Sub
-    End If
-    If m_CloseWarningMinutes <= 0 Or m_CloseWarningMinutes >= m_OpenMinMinutes Then
-        Call LogError("Invalid CloseWarningMinutes in UnderworldMapPool.dat")
-        Exit Sub
+    ' Toggle "underworld": 0 = siempre abierto, 1 = ciclo aleatorio. Se fija al arrancar.
+    m_IsRandomCycleMode = IsFeatureEnabled("underworld")
+    If m_IsRandomCycleMode Then
+        m_OpenMinMinutes = val(IniFile.GetValue("INIT", "OpenMinMinutes"))
+        m_OpenMaxMinutes = val(IniFile.GetValue("INIT", "OpenMaxMinutes"))
+        m_ClosedMinMinutes = val(IniFile.GetValue("INIT", "ClosedMinMinutes"))
+        m_ClosedMaxMinutes = val(IniFile.GetValue("INIT", "ClosedMaxMinutes"))
+        m_CloseWarningMinutes = val(IniFile.GetValue("INIT", "CloseWarningMinutes"))
+        m_OpenWarningMinutes = val(IniFile.GetValue("INIT", "OpenWarningMinutes"))
+        If Not IsValidMinutesRange(m_OpenMinMinutes, m_OpenMaxMinutes) Or Not IsValidMinutesRange(m_ClosedMinMinutes, m_ClosedMaxMinutes) Then
+            Call LogError("Invalid open/closed minutes in UnderworldMapPool.dat")
+            Exit Sub
+        End If
+        If m_CloseWarningMinutes <= 0 Or m_CloseWarningMinutes >= m_OpenMinMinutes Then
+            Call LogError("Invalid CloseWarningMinutes in UnderworldMapPool.dat")
+            Exit Sub
+        End If
+        If m_OpenWarningMinutes <= 0 Or m_OpenWarningMinutes >= m_ClosedMinMinutes Then
+            Call LogError("Invalid OpenWarningMinutes in UnderworldMapPool.dat")
+            Exit Sub
+        End If
     End If
     ReDim UnderworldMapPool(1 To maxUnderworldMaps)
     ReDim OverworldPortalPool(1 To maxUnderworldMaps)
@@ -262,9 +279,15 @@ Public Sub LoadUnderworldModule()
         OverworldPortalPool(i).y = CInt(val(IniFile.GetValue("Portal" & i, "SourceY")))
     Next i
     Set IniFile = Nothing
-    ' El servidor arranca con el inframundo cerrado: se limpian portales que haya dejado un worldsave
-    Call DestroyAllUnderworldPortals
-    Call StartUnderworldPhase(False, m_UnderworldLastSpawnTimestamp)
+    If m_IsRandomCycleMode Then
+        ' Ciclo aleatorio: arranca cerrado y se limpian portales que haya dejado un worldsave
+        Call DestroyAllUnderworldPortals
+        Call StartUnderworldPhase(False, m_UnderworldLastSpawnTimestamp)
+    Else
+        ' Siempre abierto: portales fijos desde el arranque
+        Call CreateAllUnderworldPortals
+        m_IsUnderworldOpen = True
+    End If
     IsUnderworldInitialized = True
     Exit Sub
 LoadUnderworldModule_Err:
