@@ -223,7 +223,7 @@ Use simple `ByVal` parameters unless necessary (for example, when refactoring le
 
 
 # Running tests
-
+```
 "C:\Program Files (x86)\Microsoft Visual Studio\VB98\VB6.EXE" /make /d DEBUGGING=1:PYMM0=0:UNIT_TEST=1 /out vb6build.log Server.VBP
 start "" Server.exe
 
@@ -231,11 +231,12 @@ Wait ~5 seconds, then:
 
 type test_results.txt
 taskkill /f /im Server.exe >nul 2>&1
+```
 
-test_results.txt will contain RESULT: PASS or RESULT: FAIL with details.
+`test_results.txt` will contain RESULT: PASS or RESULT: FAIL with details.
 
 
-Writing tests
+## Writing tests
 
 Create Codigo/Tests/Unit_YourFeature.bas. Template:
 
