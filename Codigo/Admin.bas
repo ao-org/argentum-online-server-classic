@@ -290,6 +290,10 @@ Public Sub Encarcelar(ByVal UserIndex As Integer, ByVal minutos As Long, Optiona
     On Error GoTo Encarcelar_Err
     Dim JailIssuer As String
     If EsGM(UserIndex) Then Exit Sub
+    ' Si estaba en un reto, primero lo abandona (pierde el reto) y después va a la cárcel
+    If UserList(UserIndex).flags.EnReto Then
+        Call AbandonarReto(UserIndex)
+    End If
     UserList(UserIndex).Counters.Pena = minutos
     Call DetenerTrabajoPorCarcel(UserIndex)
     Call RemoveCriticalObjectsWhileEnteringJail(UserIndex)

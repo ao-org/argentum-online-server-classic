@@ -112,6 +112,14 @@ Public Sub HomeArrival(ByVal UserIndex As Integer)
     Dim tY   As Integer
     Dim tMap As Integer
     With UserList(UserIndex)
+        ' Desde un reto solo se sale con /ABANDONAR: cubre un /HOGAR iniciado antes del reto, vivo o muerto
+        If .flags.EnReto Then
+            .flags.Traveling = 0
+            .Counters.goHome = 0
+            'Msg1275= No podés regresar desde un reto. Usa /ABANDONAR para admitir la derrota y volver a la ciudad.
+            Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_REGRESAR_DESDE_RETO_USA_ABANDONAR_ADMITIR_DERROTA, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos)
+            Exit Sub
+        End If
         'Antes de que el pj llegue a la ciudad, lo hacemos dejar de navegar para que no se buguee.
         If .flags.Navegando = 1 Then
             .Char.body = iCuerpoMuerto

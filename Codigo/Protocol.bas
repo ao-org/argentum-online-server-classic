@@ -2258,6 +2258,11 @@ Private Sub HandlePickUp(ByVal UserIndex As Integer)
     TargetY = reader.ReadInt8()
     DestinationSlot = reader.ReadInt8()
     With UserList(UserIndex)
+        If IsInChallengeFight(UserIndex) Then
+            ' Msg702=Acción no permitida.
+            Call WriteLocaleMsg(UserIndex, MSG_NO_ACCION_PERMITIDA, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+            Exit Sub
+        End If
         'If dead, it can't pick up objects
         If .flags.Muerto = 1 Then
             'Msg77=¡¡Estás muerto!!.
@@ -2511,6 +2516,11 @@ Private Sub HandleDrop(ByVal UserIndex As Integer)
         TargetX = reader.ReadInt8()
         TargetY = reader.ReadInt8()
         Packet_ID = PacketNames.Drop
+        If IsInChallengeFight(UserIndex) Then
+            ' Msg702=Acción no permitida.
+            Call WriteLocaleMsg(UserIndex, MSG_NO_ACCION_PERMITIDA, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+            Exit Sub
+        End If
         If Slot < 1 Or Slot > UserList(UserIndex).CurrentInventorySlots Then
             If Slot <> GOLD_SLOT Then
                 Exit Sub
@@ -4841,13 +4851,14 @@ HandleHeal_Err:
     Call TraceError(Err.Number, Err.Description, "Protocol.HandleHeal", Erl)
 End Sub
 
-''
-' Handles the "CommerceStart" message.
-'
-' @param    UserIndex The index of the user sending the message.
 Private Sub HandleCommerceStart(ByVal UserIndex As Integer)
     On Error GoTo HandleCommerceStart_Err
     With UserList(UserIndex)
+        If IsInChallengeFight(UserIndex) Then
+            ' Msg702=Acción no permitida.
+            Call WriteLocaleMsg(UserIndex, MSG_NO_ACCION_PERMITIDA, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+            Exit Sub
+        End If
         If IsInMapCarcelRestrictedArea(.pos) Then
             Call WriteLocaleMsg(UserIndex, MSG_CANNOT_TRADE_IN_JAIL, e_TextChannel.TEXTCHANNEL_ECONOMY, e_FontTypeNames.FONTTYPE_New_Naranja, vbNullString)
             Exit Sub
@@ -6389,9 +6400,6 @@ Public Sub HandleDuel(ByVal UserIndex As Integer)
         Bet = reader.ReadInt32
         PocionesMaximas = reader.ReadInt16
         CaenItems = reader.ReadBool
-        'Msg1233= No puedes realizar un reto en este momento.
-        Call WriteLocaleMsg(UserIndex, MSG_NO_PUEDES_REALIZAR_RETO_MOMENTO, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos)
-        'Exit Sub
         Call CrearReto(UserIndex, Players, Bet, PocionesMaximas, CaenItems)
     End With
     Exit Sub
@@ -7361,6 +7369,7 @@ Private Sub HandleCompletarViaje(ByVal UserIndex As Integer)
             Call WriteLocaleMsg(UserIndex, MSG_MUERTO, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
             Exit Sub
         End If
+        If .flags.EnReto Then Exit Sub
         If Not IsValidNpcRef(.flags.TargetNPC) Then Exit Sub
         Dim NpcIndex As Integer
         NpcIndex = .flags.TargetNPC.ArrayIndex
@@ -7631,6 +7640,12 @@ Private Sub HandleConsulta(ByVal UserIndex As Integer)
         If EsGM(UserConsulta.ArrayIndex) Then
             'Msg1267= No puedes iniciar el modo consulta con otro administrador.
             Call WriteLocaleMsg(UserIndex, MSG_NO_PUEDES_INICIAR_MODO_CONSULTA_OTRO_ADMINISTRADOR, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+            Exit Sub
+        End If
+        ' No se inicia una consulta con alguien en reto: congelaría la pelea hasta el timeout
+        If Not UserList(UserConsulta.ArrayIndex).flags.EnConsulta And UserList(UserConsulta.ArrayIndex).flags.EnReto Then
+            ' Msg702=Acción no permitida.
+            Call WriteLocaleMsg(UserIndex, MSG_NO_ACCION_PERMITIDA, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
             Exit Sub
         End If
         ' Si ya estaba en consulta, termina la consulta

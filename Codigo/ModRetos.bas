@@ -353,6 +353,10 @@ Private Sub IniciarReto(ByVal Oferente As Integer, ByVal Sala As Integer)
             If UserList(tUser.ArrayIndex).flags.Nadando <> 0 Or UserList(tUser.ArrayIndex).flags.Navegando <> 0 Then
                 Call DoNavega(tUser.ArrayIndex, ObjData(UserList(tUser.ArrayIndex).invent.EquippedShipObjIndex), UserList(tUser.ArrayIndex).invent.EquippedShipSlot)
             End If
+            ' Cancelamos una runa o /HOGAR en curso: no pueden completarse dentro de la arena
+            If UserList(tUser.ArrayIndex).Counters.TimerBarra > 0 Then
+                Call CancelPendingAction(tUser.ArrayIndex)
+            End If
             ' Asignamos flags
             With UserList(tUser.ArrayIndex).flags
                 .EnReto = True
@@ -805,6 +809,8 @@ Public Function PuedeReto(ByVal UserIndex As Integer) As Boolean
         If .pos.Map = 0 Or .pos.x = 0 Or .pos.y = 0 Then Exit Function
         If MapInfo(.pos.Map).Seguro = 0 Then Exit Function
         If .flags.EnTorneo Then Exit Function
+        If .flags.Comerciando Then Exit Function
+        If .flags.jugando_captura = 1 Then Exit Function
         If MapData(.pos.x, .pos.y, .pos.Map).trigger = CARCEL Then Exit Function
     End With
     PuedeReto = True
@@ -1055,4 +1061,43 @@ Private Function NombreRepetidoEnReto(ByVal NombreOferente As String, ByRef Juga
     Exit Function
 NombreRepetidoEnReto_Err:
     Call TraceError(Err.Number, Err.Description, "ModRetos.NombreRepetidoEnReto", Erl)
+End Function
+
+
+Public Function AreChallengeOpponents(ByVal FirstUserIndex As Integer, ByVal SecondUserIndex As Integer) As Boolean
+    On Error GoTo AreChallengeOpponents_Err
+    With UserList(FirstUserIndex).flags
+        If Not .EnReto Or Not UserList(SecondUserIndex).flags.EnReto Then Exit Function
+        If .SalaReto <> UserList(SecondUserIndex).flags.SalaReto Then Exit Function
+        AreChallengeOpponents = (.EquipoReto <> UserList(SecondUserIndex).flags.EquipoReto)
+    End With
+    Exit Function
+AreChallengeOpponents_Err:
+    Call TraceError(Err.Number, Err.Description, "ModRetos.AreChallengeOpponents", Erl)
+End Function
+
+Public Function AreChallengeTeammates(ByVal FirstUserIndex As Integer, ByVal SecondUserIndex As Integer) As Boolean
+    On Error GoTo AreChallengeTeammates_Err
+    If FirstUserIndex = SecondUserIndex Then Exit Function
+    With UserList(FirstUserIndex).flags
+        If Not .EnReto Or Not UserList(SecondUserIndex).flags.EnReto Then Exit Function
+        If .SalaReto <> UserList(SecondUserIndex).flags.SalaReto Then Exit Function
+        AreChallengeTeammates = (.EquipoReto = UserList(SecondUserIndex).flags.EquipoReto)
+    End With
+    Exit Function
+AreChallengeTeammates_Err:
+    Call TraceError(Err.Number, Err.Description, "ModRetos.AreChallengeTeammates", Erl)
+End Function
+
+
+Public Function IsInChallengeFight(ByVal UserIndex As Integer) As Boolean
+    On Error GoTo IsInChallengeFight_Err
+    With UserList(UserIndex).flags
+        If Not .EnReto Then Exit Function
+        If .SalaReto <= 0 Then Exit Function
+        IsInChallengeFight = (Retos.Salas(.SalaReto).Fase = e_FaseReto.EnJuego)
+    End With
+    Exit Function
+IsInChallengeFight_Err:
+    Call TraceError(Err.Number, Err.Description, "ModRetos.IsInChallengeFight", Erl)
 End Function

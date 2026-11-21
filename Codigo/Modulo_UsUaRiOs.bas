@@ -2898,7 +2898,11 @@ Public Function CanAttackUser(ByVal attackerIndex As Integer, _
             Exit Function
         End If
     End If
-    If UserList(attackerIndex).Grupo.Id > 0 And UserList(TargetIndex).Grupo.Id > 0 And UserList(attackerIndex).Grupo.Id = UserList(TargetIndex).Grupo.Id Then
+    If AreChallengeTeammates(attackerIndex, TargetIndex) Then
+        CanAttackUser = e_AttackInteractionResult.eSameTeam
+        Exit Function
+    End If
+    If UserList(attackerIndex).Grupo.id > 0 And UserList(TargetIndex).Grupo.id > 0 And UserList(attackerIndex).Grupo.id = UserList(TargetIndex).Grupo.id And Not AreChallengeOpponents(attackerIndex, TargetIndex) Then
         CanAttackUser = eSameGroup
         Exit Function
     End If

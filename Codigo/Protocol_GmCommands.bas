@@ -592,6 +592,10 @@ Public Sub HandleWarpChar(ByVal UserIndex As Integer)
             If Not IsValidUserRef(tUser) Then
                 ' Msg743=Usuario offline.
                 Call WriteLocaleMsg(UserIndex, MSG_USUARIO_OFFLINE_743, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+            ElseIf UserList(tUser.ArrayIndex).flags.EnReto Then
+                ' Un jugador en reto solo sale de la arena con /ABANDONAR
+                ' Msg702=Acción no permitida.
+                Call WriteLocaleMsg(UserIndex, MSG_NO_ACCION_PERMITIDA, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
             ElseIf InMapBounds(Map, x, y) Then
                 'no permitimos que se use el telep para llevas User a casas privadas.
                 If UCase$(username) <> "YO" Then
@@ -1871,6 +1875,12 @@ Public Sub HandleSummonChar(ByVal UserIndex As Integer)
                 End If
                 Exit Sub
             Else
+                Exit Sub
+            End If
+            ' Un jugador en reto solo sale de la arena con /ABANDONAR
+            If UserList(tUser.ArrayIndex).flags.EnReto Then
+                ' Msg702=Acción no permitida.
+                Call WriteLocaleMsg(UserIndex, MSG_NO_ACCION_PERMITIDA, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
                 Exit Sub
             End If
             If CompararPrivilegiosUser(tUser.ArrayIndex, UserIndex) > 0 Then
