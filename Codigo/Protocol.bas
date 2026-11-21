@@ -2114,7 +2114,7 @@ Private Sub HandleWalk(ByVal UserIndex As Integer)
                 .Counters.LastStep = currentTick
                 Call ResetUserAutomatedActions(UserIndex)
                 If UserList(UserIndex).Grupo.EnGrupo Then
-                    Call CompartirUbicacion(UserIndex)
+                    Call BroadcastMemberPosition(UserIndex)
                 End If
                 'Stop resting if needed
                 If .flags.Descansar Then
@@ -3345,15 +3345,7 @@ Private Sub HandleWorkLeftClick(ByVal UserIndex As Integer)
                                 Call WriteWorkRequestTarget(UserIndex, 0)
                                 Exit Sub
                             End If
-                            If UserList(UserIndex).Grupo.CantidadMiembros = 0 Then
-                                Call SetUserRef(UserList(UserIndex).Grupo.Lider, UserIndex)
-                                Call SetUserRef(UserList(UserIndex).Grupo.Miembros(1), UserIndex)
-                                UserList(UserIndex).Grupo.CantidadMiembros = 1
-                                Call InvitarMiembro(UserIndex, tU)
-                            Else
-                                Call SetUserRef(UserList(UserIndex).Grupo.Lider, UserIndex)
-                                Call InvitarMiembro(UserIndex, tU)
-                            End If
+                            Call InvitarMiembro(UserIndex, tU)
                         Else
                             Call WriteLocaleMsg(UserIndex, MSG_USER_IS_DEAD, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
                             Call WriteWorkRequestTarget(UserIndex, 0)
@@ -6988,7 +6980,7 @@ Private Sub HandleInvitarGrupo(ByVal UserIndex As Integer)
             'Msg77=¡¡Estás muerto!!.
             Call WriteLocaleMsg(UserIndex, MSG_MUERTO, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
         Else
-            If .Grupo.CantidadMiembros <= UBound(.Grupo.Miembros) Then
+            If .Grupo.CantidadMiembros < UBound(.Grupo.Miembros) Then
                 Call WriteWorkRequestTarget(UserIndex, e_Skill.Grupo)
             Else
                 ' Msg751=¡No podés invitar a más personas!
@@ -7200,10 +7192,13 @@ hErr:
 End Sub
 
 Private Sub HandleAbandonarGrupo(ByVal UserIndex As Integer)
-    'Author: Pablo Mercavides
     On Error GoTo HandleAbandonarGrupo_Err
     With UserList(UserIndex)
-        If UserList(UserIndex).Grupo.Lider.ArrayIndex = UserIndex Then
+        If Not .Grupo.EnGrupo Then
+            Call WriteLocaleMsg(UserIndex, MSG_NINGUN_GRUPO_2057, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO)
+            Exit Sub
+        End If
+        If .Grupo.Lider.ArrayIndex = UserIndex Then
             Call FinalizarGrupo(UserIndex)
         Else
             Call SalirDeGrupo(UserIndex)
@@ -8406,6 +8401,8 @@ Public Sub HandleActionOnGroupFrame(ByVal UserIndex As Integer)
     With UserList(UserIndex)
         If Not .Grupo.EnGrupo Then Exit Sub
         If Not IsFeatureEnabled("target_group_frames") Then Exit Sub
+        If TargetGroupMember = 0 Then Exit Sub
+        If Not IsValidUserRef(.Grupo.Lider) Then Exit Sub
         If UserList(.Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros < TargetGroupMember Then Exit Sub
         If Not IsValidUserRef(UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(TargetGroupMember)) Then Exit Sub
         If UserList(.Grupo.Lider.ArrayIndex).Grupo.Miembros(TargetGroupMember).ArrayIndex = UserIndex Then Exit Sub
