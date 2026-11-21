@@ -3123,6 +3123,7 @@ Public Type t_User
     Trabajo As t_UserTrabajo
     AccountCollectibleCardBitArray(1 To 128) As Byte
     AccountCollectibleCardQuantities(1 To 1024) As Byte
+    AccountCollectibleCardSavedQuantities(1 To 1024) As Byte
     AccountID As Long
     Grupo As Tgrupo
     showName As Boolean 'Permite que los GMs oculten su nick con el comando /SHOWNAME
