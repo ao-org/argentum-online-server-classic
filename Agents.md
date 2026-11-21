@@ -220,3 +220,40 @@ Use simple `ByVal` parameters unless necessary (for example, when refactoring le
 ### 14. Helper functions
 
 `Matematicas.bas` holds mathematical helper functions. Reuse them before writing new ones.
+
+
+# Running tests
+
+"C:\Program Files (x86)\Microsoft Visual Studio\VB98\VB6.EXE" /make /d DEBUGGING=1:PYMM0=0:UNIT_TEST=1 /out vb6build.log Server.VBP
+start "" Server.exe
+
+Wait ~5 seconds, then:
+
+type test_results.txt
+taskkill /f /im Server.exe >nul 2>&1
+
+test_results.txt will contain RESULT: PASS or RESULT: FAIL with details.
+
+
+Writing tests
+
+Create Codigo/Tests/Unit_YourFeature.bas. Template:
+
+Attribute VB_Name = "Unit_YourFeature"
+```
+Public Sub RunTests()
+    Call UnitTesting.StartSuite("YourFeature")
+
+    Call UnitTesting.AssertEqual(2 + 2, 4, "basic math")
+    Call UnitTesting.AssertTrue(SomeFunction() = "expected", "SomeFunction returns expected")
+
+    Call UnitTesting.EndSuite
+End Sub
+```
+
+Then register it in UnitTesting.bas – find where other suites are called (search for Unit_Math.RunTests) and add your suite in the same place.
+
+Also add the module to Server.VBP:
+```
+Module=Unit_YourFeature; Codigo\Tests\Unit_YourFeature.bas
+```
