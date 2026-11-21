@@ -14,9 +14,9 @@ Guidance for AI coding agents working on the Argentum Online (AO20) VB6 server, 
 
 | Repository | Type | Access | URL |
 |------------|------|--------|-----|
-| **Assets** | Resources/Config | Private | https://github.com/ao-org/argentum-online-assets/ |
-| **Server** | VB6 Server Code | Public | https://github.com/ao-org/argentum-online-server/ |
-| **Client** | VB6 Client Code | Public | https://github.com/ao-org/argentum-online-client |
+| **Assets** | Resources/Config | Private | https://github.com/ao-org/argentum-online-assets-classic |
+| **Server** | VB6 Server Code | Public | https://github.com/ao-org/argentum-online-server-classic |
+| **Client** | VB6 Client Code | Public | https://github.com/ao-org/argentum-online-client-classic |
 
 - **Assets (Recursos)**: graphics, sounds, maps, configuration files, shared resources.
 - **Server**: game server logic, database, NPCs, combat systems.
