@@ -2195,6 +2195,7 @@ Sub WarpUserChar(ByVal UserIndex As Integer, ByVal Map As Integer, ByVal x As In
         Call EraseUserChar(UserIndex, True, FX)
         If OldMap <> Map Then
             Call StopAutoCombat(UserIndex, e_AutoCombatStopReason.e_AutoCombatStopMapChanged)
+            Call SendWeatherTransition(UserIndex, oldMap, map)
             Call WriteChangeMap(UserIndex, Map)
             If MapInfo(OldMap).Seguro = 1 And MapInfo(Map).Seguro = 0 And .Stats.ELV < 42 Then
                 ' Msg573=Estás saliendo de una zona segura, recuerda que aquí corres riesgo de ser atacado.

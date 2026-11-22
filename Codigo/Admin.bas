@@ -153,9 +153,6 @@ Public Puerto                            As Long
 Public ListenIp                          As String
 Public MAXPASOS                          As Long
 Public BootDelBackUp                     As Byte
-Public Lloviendo                         As Boolean
-Public Nebando                           As Boolean
-Public Nieblando                         As Boolean
 Public IpList                            As New Collection
 Public Baneos                            As New Collection
 
