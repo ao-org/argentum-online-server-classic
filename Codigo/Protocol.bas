@@ -6195,6 +6195,9 @@ Public Sub HandleParticipar(ByVal UserIndex As Integer)
                     Call InstanciaCaptura.inscribirse(UserIndex)
                     Exit Sub
                 End If
+            ElseIf Torneo.HayTorneoaActivo Then
+                Call ParticiparTorneo(UserIndex)
+                Exit Sub
             Else
                 RoomId = GlobalLobbyIndex
             End If
@@ -6852,11 +6855,16 @@ End Sub
 
 Private Sub HandleComenzarTorneo(ByVal UserIndex As Integer)
     On Error GoTo ErrHandler
-    With UserList(UserIndex)
-        If EsGM(UserIndex) Then
-            Call ComenzarTorneoOk
-        End If
-    End With
+    If Not EsGM(UserIndex) Then Exit Sub
+    If (Not Torneo.HayTorneoaActivo) Or Torneo.participantes = 0 Then
+        Call WriteLocaleMsg(UserIndex, MSG_NO_HAY_NINGUN_EVENTO_ACTIVO, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos)
+        Exit Sub
+    End If
+    If Torneo.IsStarted Then
+        Call WriteLocaleMsg(UserIndex, MSG_HA_CERRADO_INSCRIPCION_EVENTO, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos)
+        Exit Sub
+    End If
+    Call ComenzarTorneoOk
     Exit Sub
 ErrHandler:
     Call TraceError(Err.Number, Err.Description, "Protocol.HandleComenzarTorneo", Erl)
