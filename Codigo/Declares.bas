@@ -2266,7 +2266,9 @@ End Type
 Public Type t_Retos
     TamañoMaximoEquipo As Byte
     ApuestaMinima As Long
+    ApuestaMaxima As Long
     ImpuestoApuesta As Single
+    TiempoDepositoItems As Integer
     DuracionMaxima As Long
     TiempoConteo As Byte
     Salas() As t_SalaReto

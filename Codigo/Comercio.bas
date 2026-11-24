@@ -147,8 +147,11 @@ Public Sub Comercio(ByVal Modo As eModoComercio, ByVal UserIndex As Integer, ByV
         Call QuitarUserInvItem(UserIndex, Slot, Cantidad)
         Call UpdateUserInv(False, UserIndex, Slot)
         precio = Fix(SalePrice(Objeto.ObjIndex, UserIndex) * Cantidad)
-        UserList(UserIndex).Stats.GLD = UserList(UserIndex).Stats.GLD + precio
-        If UserList(UserIndex).Stats.GLD > MAXORO Then UserList(UserIndex).Stats.GLD = MAXORO
+        ' El tope solo limita lo que se suma: nunca baja el oro que el personaje ya tenía
+        If UserList(UserIndex).Stats.GLD < MAXORO Then
+            UserList(UserIndex).Stats.GLD = UserList(UserIndex).Stats.GLD + precio
+            If UserList(UserIndex).Stats.GLD > MAXORO Then UserList(UserIndex).Stats.GLD = MAXORO
+        End If
         Call WriteUpdateGold(UserIndex)
         If Not IsFeatureEnabled(FEATURE_DESTROY_NPC_BOUGHT_ITEMS) Then
             NpcSlot = SlotEnNPCInv(NpcIndex, Objeto.ObjIndex, Objeto.Amount)

@@ -1370,8 +1370,11 @@ Public Sub DoRobar(ByVal LadronIndex As Integer, ByVal VictimaIndex As Integer)
                             n = prevGold - ProtectedGold
                             UserList(VictimaIndex).Stats.GLD = ProtectedGold
                         End If
-                        .Stats.GLD = .Stats.GLD + n
-                        If .Stats.GLD > MAXORO Then .Stats.GLD = MAXORO
+                        ' El tope solo limita lo que se suma: nunca baja el oro que el ladrón ya tenía
+                        If .Stats.GLD < MAXORO Then
+                            .Stats.GLD = .Stats.GLD + n
+                            If .Stats.GLD > MAXORO Then .Stats.GLD = MAXORO
+                        End If
                         Call WriteLocaleMsg(LadronIndex, MSG_LE_HAS_ROBADO_MONEDAS_DE_ORO_A, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Rojo_Salmon, PonerPuntos(n) & "¬" & UserList(VictimaIndex).name) ' Msg1458=Le has robado ¬1 monedas de oro a ¬2
                         Call WriteLocaleMsg(VictimaIndex, MSG_TE_HA_ROBADO_MONEDAS_DE_ORO, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Rojo_Salmon, UserList(LadronIndex).name & "¬" & PonerPuntos(n)) 'Msg1530=¬1 te ha robado ¬2 monedas de oro.
                         Call WriteUpdateGold(LadronIndex) 'Le actualizamos la billetera al ladron

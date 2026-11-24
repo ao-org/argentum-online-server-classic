@@ -27,8 +27,7 @@ Attribute VB_Name = "ModRetos"
 '
 Option Explicit
 
-Private Const APUESTA_MAXIMA            As Long = 100000000
-Private Const OBJ_POCION_ROJA           As Integer = 38
+Private Const APUESTA_MAXIMA_DEFAULT    As Long = 1000000
 Private Const NIVEL_MINIMO_ELO          As Byte = 35
 Private Const FACTOR_ELO                As Single = 0.1
 Private Const RONDAS_MAXIMAS            As Byte = 3
@@ -50,6 +49,10 @@ Public Sub CargarInfoRetos()
     With Retos
         .TamañoMaximoEquipo = val(File.GetValue("Retos", "MaximoEquipo"))
         .ApuestaMinima = val(File.GetValue("Retos", "ApuestaMinima"))
+        .ApuestaMaxima = val(File.GetValue("Retos", "ApuestaMaxima"))
+        If .ApuestaMaxima <= 0 Then .ApuestaMaxima = APUESTA_MAXIMA_DEFAULT
+        .TiempoDepositoItems = val(File.GetValue("Retos", "TiempoGuardarItems"))
+        If .TiempoDepositoItems <= 0 Then .TiempoDepositoItems = TIEMPO_DEPOSITO_ITEMS
         .ImpuestoApuesta = val(File.GetValue("Retos", "ImpuestoApuesta"))
         .DuracionMaxima = val(File.GetValue("Retos", "DuracionMaxima"))
         #If DEBUGGING Then
@@ -98,7 +101,7 @@ Public Sub CrearReto(ByVal UserIndex As Integer, JugadoresStr As String, ByVal A
             Exit Sub
         End If
         Dim MaxIndexEquipo As Integer: MaxIndexEquipo = UBound(Jugadores) \ 2
-        If Apuesta < Retos.ApuestaMinima Or Apuesta > APUESTA_MAXIMA Then
+        If Apuesta < Retos.ApuestaMinima Or Apuesta > Retos.ApuestaMaxima Then
             Call WriteLocaleMsg(UserIndex, MSG_APUESTA_MINIMA_MONEDAS_ORO, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos, PonerPuntos(Retos.ApuestaMinima)) ' Msg1958=La apuesta mínima es de ¬1 monedas de oro.
             Exit Sub
         End If
@@ -109,7 +112,7 @@ Public Sub CrearReto(ByVal UserIndex As Integer, JugadoresStr As String, ByVal A
             Exit Sub
         End If
         If PocionesMaximas >= 0 Then
-            If TieneObjetos(OBJ_POCION_ROJA, PocionesMaximas + 1, UserIndex) Then
+            If CountHealthPotions(UserIndex) > PocionesMaximas Then
                 Call WriteLocaleMsg(UserIndex, MSG_TIENES_DEMASIADAS_POCIONES_ROJAS_CANTIDAD_MAXIMA_1443, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos, PocionesMaximas) ' Msg1443=Tienes demasiadas pociones rojas (Cantidad máxima: ¬1).
                 Exit Sub
             End If
@@ -208,7 +211,7 @@ Public Sub AceptarReto(ByVal UserIndex As Integer, OferenteName As String)
             Exit Sub
         End If
         If .PocionesMaximas >= 0 Then
-            If TieneObjetos(OBJ_POCION_ROJA, .PocionesMaximas + 1, UserIndex) Then
+            If CountHealthPotions(UserIndex) > .PocionesMaximas Then
                 Call WriteLocaleMsg(UserIndex, MSG_TIENES_DEMASIADAS_POCIONES_ROJAS_CANTIDAD_MAXIMA, e_TextChannel.TEXTCHANNEL_EVENT, e_FontTypeNames.FONTTYPE_New_Eventos, .PocionesMaximas) ' Msg1963=Tienes demasiadas pociones rojas (Cantidad máxima: ¬1).
                 Exit Sub
             End If
@@ -651,7 +654,7 @@ Public Sub IniciarDepositoItems(ByVal Sala As Integer)
         #If DEBUGGING Then
             .TiempoItems = TIEMPO_DEPOSITO_ITEMS_DBG
         #Else
-            .TiempoItems = TIEMPO_DEPOSITO_ITEMS
+            .TiempoItems = Retos.TiempoDepositoItems
         #End If
         ganador = ObtenerGanador(Sala)
         For indiceJugador = 0 To UBound(.Jugadores)
@@ -882,7 +885,7 @@ Private Function TodosPuedenReto(ByVal Oferente As Integer) As Boolean
             Call CancelarSolicitudReto(Oferente, UserList(Oferente).name & " no tiene las monedas de oro suficientes.")
             Exit Function
         ElseIf .PocionesMaximas >= 0 Then
-            If TieneObjetos(OBJ_POCION_ROJA, .PocionesMaximas + 1, Oferente) Then
+            If CountHealthPotions(Oferente) > .PocionesMaximas Then
                 Call CancelarSolicitudReto(Oferente, UserList(Oferente).name & " tiene demasiadas pociones rojas (Cantidad máxima: " & .PocionesMaximas & ").")
                 Exit Function
             End If
@@ -896,7 +899,7 @@ Private Function TodosPuedenReto(ByVal Oferente As Integer) As Boolean
                 Call CancelarSolicitudReto(Oferente, UserList(.Jugadores(i).CurIndex.ArrayIndex).name & " no tiene las monedas de oro suficientes.")
                 Exit Function
             ElseIf .PocionesMaximas >= 0 Then
-                If TieneObjetos(OBJ_POCION_ROJA, .PocionesMaximas + 1, .Jugadores(i).CurIndex.ArrayIndex) Then
+                If CountHealthPotions(.Jugadores(i).CurIndex.ArrayIndex) > .PocionesMaximas Then
                     Call CancelarSolicitudReto(Oferente, UserList(.Jugadores(i).CurIndex.ArrayIndex).name & " tiene demasiadas pociones rojas (Cantidad máxima: " & _
                             .PocionesMaximas & ").")
                     Exit Function
@@ -1063,6 +1066,26 @@ NombreRepetidoEnReto_Err:
     Call TraceError(Err.Number, Err.Description, "ModRetos.NombreRepetidoEnReto", Erl)
 End Function
 
+Private Function CountHealthPotions(ByVal UserIndex As Integer) As Long
+    On Error GoTo CountHealthPotions_Err
+    Dim inventorySlot As Integer
+    Dim itemIndex     As Integer
+    Dim potionCount   As Long
+    With UserList(UserIndex)
+        For inventorySlot = 1 To .CurrentInventorySlots
+            itemIndex = .invent.Object(inventorySlot).ObjIndex
+            If itemIndex > 0 Then
+                If ObjData(itemIndex).OBJType = e_OBJType.otPotions And ObjData(itemIndex).TipoPocion = e_PotionType.ModifiesHp Then
+                    potionCount = potionCount + .invent.Object(inventorySlot).Amount
+                End If
+            End If
+        Next
+    End With
+    CountHealthPotions = potionCount
+    Exit Function
+CountHealthPotions_Err:
+    Call TraceError(Err.Number, Err.Description, "ModRetos.CountHealthPotions", Erl)
+End Function
 
 Public Function AreChallengeOpponents(ByVal FirstUserIndex As Integer, ByVal SecondUserIndex As Integer) As Boolean
     On Error GoTo AreChallengeOpponents_Err
