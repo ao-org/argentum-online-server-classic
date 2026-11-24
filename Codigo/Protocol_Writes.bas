@@ -1299,54 +1299,36 @@ WriteAreaChanged_Err:
     Call TraceError(Err.Number, Err.Description, "Argentum20Server.Protocol_Writes.WriteAreaChanged", Erl)
 End Sub
 
-''
-' Writes the "PauseToggle" message to the given user's outgoing data .incomingData.
-'
-' @param    UserIndex User to which the message is intended.
-' @remarks  The data is not actually sent until the buffer is properly flushed.
-''
-' Writes the "RainToggle" message to the given user's outgoing data .incomingData.
-'
-' @param    UserIndex User to which the message is intended.
-' @remarks  The data is not actually sent until the buffer is properly flushed.
-Public Sub WriteRainToggle(ByVal UserIndex As Integer)
+Public Sub WriteRainToggle(ByVal UserIndex As Integer, ByVal isRaining As Boolean)
     On Error GoTo WriteRainToggle_Err
-    Call modSendData.SendData(ToIndex, UserIndex, PrepareMessageRainToggle())
+    Call modSendData.SendData(ToIndex, UserIndex, PrepareMessageRainToggle(isRaining))
     Exit Sub
 WriteRainToggle_Err:
     Call Writer.Clear
     Call TraceError(Err.Number, Err.Description, "Argentum20Server.Protocol_Writes.WriteRainToggle", Erl)
 End Sub
 
-Public Sub WriteNieveToggle(ByVal UserIndex As Integer)
+Public Sub WriteNieveToggle(ByVal UserIndex As Integer, ByVal isSnowing As Boolean)
     On Error GoTo WriteNieveToggle_Err
-    Call modSendData.SendData(ToIndex, UserIndex, PrepareMessageNevarToggle())
+    Call modSendData.SendData(ToIndex, UserIndex, PrepareMessageNevarToggle(isSnowing))
     Exit Sub
 WriteNieveToggle_Err:
     Call Writer.Clear
     Call TraceError(Err.Number, Err.Description, "Argentum20Server.Protocol_Writes.WriteNieveToggle", Erl)
 End Sub
 
-Public Sub WriteNubesToggle(ByVal UserIndex As Integer)
+Public Sub WriteNubesToggle(ByVal UserIndex As Integer, ByVal fogIntensity As Byte)
     On Error GoTo WriteNubesToggle_Err
-    Call modSendData.SendData(ToIndex, UserIndex, PrepareMessageNieblandoToggle(IntensidadDeNubes))
+    Call modSendData.SendData(ToIndex, UserIndex, PrepareMessageNieblandoToggle(fogIntensity))
     Exit Sub
 WriteNubesToggle_Err:
     Call Writer.Clear
     Call TraceError(Err.Number, Err.Description, "Argentum20Server.Protocol_Writes.WriteNubesToggle", Erl)
 End Sub
 
-' Initial synchronization only. A newly initialized client starts with
-' atmospheric fog disabled, so sending the fog toggle here enables it safely.
 Public Sub WriteCurrentWeatherState(ByVal UserIndex As Integer)
     On Error GoTo WriteCurrentWeatherState_Err
-    Dim SendRain As Boolean
-    Dim SendSnow As Boolean
-    Dim ToggleFog As Boolean
-    Call DetermineInitialWeatherSynchronization(SendRain, SendSnow, ToggleFog)
-    If SendRain Then Call WriteRainToggle(UserIndex)
-    If SendSnow Then Call WriteNieveToggle(UserIndex)
-    If ToggleFog Then Call WriteNubesToggle(UserIndex)
+    Call SendMapWeatherState(UserIndex, UserList(UserIndex).pos.map)
     Exit Sub
 WriteCurrentWeatherState_Err:
     Call TraceError(Err.Number, Err.Description, "Argentum20Server.Protocol_Writes.WriteCurrentWeatherState", Erl)
@@ -3960,15 +3942,10 @@ PrepareMessagePauseToggle_Err:
     Call TraceError(Err.Number, Err.Description, "Argentum20Server.Protocol_Writes.PrepareMessagePauseToggle", Erl)
 End Function
 
-''
-' Prepares the "RainToggle" message and returns it.
-'
-' @return   The formated message ready to be writen as is on outgoing buffers.
-' @remarks  The data is not actually sent until the buffer is properly flushed.
-Public Function PrepareMessageRainToggle()
+Public Function PrepareMessageRainToggle(ByVal isRaining As Boolean)
     On Error GoTo PrepareMessageRainToggle_Err
     Call Writer.WriteInt16(ServerPacketID.eRainToggle)
-    Call Writer.WriteBool(Lloviendo)
+    Call Writer.WriteBool(isRaining)
     Exit Function
 PrepareMessageRainToggle_Err:
     Call Writer.Clear
@@ -4434,10 +4411,10 @@ PrepareMessageNieblandoToggle_Err:
     Call TraceError(Err.Number, Err.Description, "Argentum20Server.Protocol_Writes.PrepareMessageNieblandoToggle", Erl)
 End Function
 
-Public Function PrepareMessageNevarToggle()
+Public Function PrepareMessageNevarToggle(ByVal isSnowing As Boolean)
     On Error GoTo PrepareMessageNevarToggle_Err
     Call Writer.WriteInt16(ServerPacketID.eNieveToggle)
-    Call Writer.WriteBool(Nebando)
+    Call Writer.WriteBool(isSnowing)
     Exit Function
 PrepareMessageNevarToggle_Err:
     Call Writer.Clear

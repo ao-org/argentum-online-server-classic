@@ -1848,38 +1848,6 @@ GetExpPenalty_Err:
     Call TraceError(Err.Number, Err.Description, "SistemaCombate.GetExpPenalty", Erl)
 End Function
 
-Private Sub CalcularDarOroGrupal(ByVal UserIndex As Integer, ByVal GiveGold As Long)
-    On Error GoTo CalcularDarOroGrupal_Err
-    Dim OroDar As Long
-    OroDar = GiveGold * SvrConfig.GetValue("GoldMult")
-    Dim orobackup As Long
-    orobackup = OroDar
-    Dim i     As Byte
-    Dim Index As Integer
-    Dim Lider As Integer
-    Lider = UserList(UserIndex).Grupo.Lider.ArrayIndex
-    OroDar = OroDar / UserList(UserList(UserIndex).Grupo.Lider.ArrayIndex).Grupo.CantidadMiembros
-    For i = 1 To UserList(Lider).Grupo.CantidadMiembros
-        If IsValidUserRef(UserList(Lider).Grupo.Miembros(i)) Then
-            Index = UserList(Lider).Grupo.Miembros(i).ArrayIndex
-            If UserList(Index).flags.Muerto = 0 Then
-                If UserList(UserIndex).pos.Map = UserList(Index).pos.Map Then
-                    If OroDar > 0 Then
-                        UserList(Index).Stats.GLD = UserList(Index).Stats.GLD + OroDar
-                        If UserList(Index).ChatCombate = 1 Then
-                            Call WriteLocaleMsg(Index, MSG_GROUP_GOLD_REWARD, e_TextChannel.TEXTCHANNEL_GROUP, e_FontTypeNames.FONTTYPE_New_GRUPO, PonerPuntos(OroDar)) ' Msg1780=¡El grupo ha ganado ¬1 monedas de oro!
-                        End If
-                        Call WriteUpdateGold(Index)
-                    End If
-                End If
-            End If
-        End If
-    Next i
-    Exit Sub
-CalcularDarOroGrupal_Err:
-    Call TraceError(Err.Number, Err.Description, "SistemaCombate.CalcularDarOroGrupal", Erl)
-End Sub
-
 Public Function TriggerZonaPelea(ByVal Origen As Integer, ByVal Destino As Integer) As e_Trigger6
     On Error GoTo ErrHandler
     Dim tOrg As e_Trigger

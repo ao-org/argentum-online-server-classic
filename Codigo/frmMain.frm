@@ -1274,12 +1274,12 @@ End Sub
 
 Private Sub HoraFantasia_Timer()
     On Error GoTo HoraFantasia_Timer_Err
-    If Lloviendo Then
+    If GetRainingZoneCount() > 0 Then
         Label6.Caption = "Lloviendo"
     Else
         Label6.Caption = "No llueve"
     End If
-    If ServidorNublado Then
+    If GetActiveWeatherZoneCount() > 0 Then
         Label7.Caption = "Nublado"
     Else
         Label7.Caption = "Sin nubes"
@@ -1414,52 +1414,9 @@ SubastaTimer_Timer_Err:
     Call TraceError(Err.Number, Err.Description, "frmMain.SubastaTimer_Timer", Erl)
 End Sub
 
-
 Private Sub TimerMeteorologia_Timer()
     On Error GoTo TimerMeteorologia_Timer_Err
-
-    If TimerMeteorologico = 0 Or TimerMeteorologico > METEOROLOGICAL_CYCLE_MINUTES Then
-        TimerMeteorologico = METEOROLOGICAL_CYCLE_MINUTES
-    End If
-
-    If TimerMeteorologico = METEOROLOGICAL_CLOUD_COUNTDOWN_MINUTES Then
-        ProbabilidadNublar = RandomNumber(1, 2)
-        If WeatherCloudRollSucceeds(ProbabilidadNublar) Then
-            IntensidadDeNubes = RandomNumber(10, 45)
-            Call SetAtmosphericFogState(True, IntensidadDeNubes)
-            Call SendData(SendTarget.ToAll, 0, PrepareMessageNieblandoToggle(IntensidadDeNubes))
-            Call AgregarAConsola("Servidor - Empezaron las nubes")
-        Else
-            Call AgregarAConsola("Servidor - Tiempo despejado.")
-        End If
-    ElseIf TimerMeteorologico < METEOROLOGICAL_CLOUD_COUNTDOWN_MINUTES And _
-            TimerMeteorologico > METEOROLOGICAL_PRECIPITATION_COUNTDOWN_MINUTES Then
-        If IsAtmosphericFogActive() Then
-            Truenos.Enabled = True
-        End If
-    ElseIf TimerMeteorologico = METEOROLOGICAL_PRECIPITATION_COUNTDOWN_MINUTES Then
-        If IsAtmosphericFogActive() Then
-            ProbabilidadLLuvia = RandomNumber(1, 5)
-            If WeatherPrecipitationRollSucceeds(ProbabilidadLLuvia, True) Then
-                Call SetPrecipitationState(True)
-                Call SendData(SendTarget.ToAll, 0, PrepareMessagePlayWave(404, NO_3D_SOUND, NO_3D_SOUND))
-                Call SendData(SendTarget.ToAll, 0, PrepareMessageFlashScreen(&HD254D6, 250))
-                Call SendData(SendTarget.ToAll, 0, PrepareMessageRainToggle())
-                Call SendData(SendTarget.ToAll, 0, PrepareMessageNevarToggle())
-                Call AgregarAConsola("Servidor - Empezo la precipitacion.")
-            Else
-                Truenos.Enabled = False
-                Call AgregarAConsola("Servidor - Las nubes continuan sin precipitacion.")
-            End If
-        End If
-    End If
-
-    If TimerMeteorologico = 1 Then
-        Call AgregarAConsola("Servidor - Ciclo meteorologico finalizado.")
-        Call ResetMeteo(True)
-    Else
-        TimerMeteorologico = TimerMeteorologico - 1
-    End If
+    Call ProcessWeatherMinute
     Exit Sub
 TimerMeteorologia_Timer_Err:
     Call TraceError(Err.Number, Err.Description, "frmMain.TimerMeteorologia_Timer", Erl)
@@ -1519,17 +1476,7 @@ End Sub
 
 Private Sub Truenos_Timer()
     On Error GoTo Truenos_Timer_Err
-    Dim Enviar    As Byte
-    Dim TruenoWav As Integer
-    Enviar = RandomNumber(1, 15)
-    Dim Duracion As Long
-    If Enviar < 8 Then
-        TruenoWav = 399 + Enviar
-        If TruenoWav = 404 Then TruenoWav = 406
-        Duracion = RandomNumber(80, 250)
-        Call SendData(SendTarget.ToAll, 0, PrepareMessagePlayWave(TruenoWav, NO_3D_SOUND, NO_3D_SOUND))
-        Call SendData(SendTarget.ToAll, 0, PrepareMessageFlashScreen(&HEFEECB, Duracion))
-    End If
+    Call ProcessWeatherThunder
     Exit Sub
 Truenos_Timer_Err:
     Call TraceError(Err.Number, Err.Description, "frmMain.Truenos_Timer", Erl)

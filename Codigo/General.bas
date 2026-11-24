@@ -390,32 +390,6 @@ HayLava_Err:
     Call TraceError(Err.Number, Err.Description, "General.HayLava", Erl)
 End Function
 
-Sub ApagarFogatas()
-    'Ladder /ApagarFogatas
-    On Error GoTo ErrHandler
-    Dim obj As t_Obj
-    obj.ObjIndex = FOGATA_APAG
-    obj.amount = 1
-    Dim MapaActual As Long
-    Dim y          As Long
-    Dim x          As Long
-    For MapaActual = 1 To NumMaps
-        For y = YMinMapSize To YMaxMapSize
-            For x = XMinMapSize To XMaxMapSize
-                If MapInfo(MapaActual).lluvia Then
-                    If MapData(x, y, MapaActual).ObjInfo.ObjIndex = FOGATA Then
-                        Call EraseObj(GetMaxInvOBJ(), MapaActual, x, y)
-                        Call MakeObj(obj, MapaActual, x, y)
-                    End If
-                End If
-            Next x
-        Next y
-    Next MapaActual
-    Exit Sub
-ErrHandler:
-    Call LogError("Error producido al apagar las fogatas de " & x & "-" & y & " del mapa: " & MapaActual & "    -" & Err.Description)
-End Sub
-
 Private Sub InicializarConstantes()
     On Error GoTo InicializarConstantes_Err
     LastBackup = Format$(Now, "Short Time")
@@ -658,7 +632,7 @@ Sub Main()
     Call ResetUserAutoSaveTimer
     Subasta.SubastaHabilitada = True
     Subasta.HaySubastaActiva = False
-    Call ResetMeteo
+    Call ResetMeteo(False)
     #If DIRECT_PLAY = 0 Then
         Call Protocol_Writes.InitializeAuxiliaryBuffer
     #End If
@@ -1168,7 +1142,9 @@ Public Sub RecStamina(ByVal UserIndex As Integer, ByRef EnviarStats As Boolean, 
                 Exit Sub
             End If
             .Counters.STACounter = 0
-            If .Counters.Trabajando > 0 Or IsSet(.flags.StatusMask, ePreventEnergyRestore) Then Exit Sub  'Trabajando no sube energía. (ToxicWaste)
+            If .Counters.Trabajando > 0 Or IsSet(.flags.StatusMask, ePreventEnergyRestore) Then Exit Sub
+            ' Bajo la lluvia y a la intemperie no se recupera energia
+            If IsUserExposedToRain(UserIndex) Then Exit Sub
             EnviarStats = True
             Select Case .Stats.UserSkills(e_Skill.Supervivencia)
                 Case 0 To 10

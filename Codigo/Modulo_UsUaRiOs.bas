@@ -517,7 +517,7 @@ Dim tStr                        As String
             Call WriteLocaleMsg(UserIndex, MSG_CHARACTER_FOUND_ON_ILLEGAL_POSITION, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFOBOLD)
         End If
         
-        If IsFeatureEnabled("underworld") And IsUnderworldInitialized Then
+        If IsUnderworldInitialized Then
             If Not IsUnderworldOpen And IsUserIndexInsideTheUnderworld(UserIndex) Then
                 .pos.Map = Cities(HomeCityId).Map
                 .pos.x = Cities(HomeCityId).x
@@ -2195,6 +2195,7 @@ Sub WarpUserChar(ByVal UserIndex As Integer, ByVal Map As Integer, ByVal x As In
         Call EraseUserChar(UserIndex, True, FX)
         If OldMap <> Map Then
             Call StopAutoCombat(UserIndex, e_AutoCombatStopReason.e_AutoCombatStopMapChanged)
+            Call SendWeatherTransition(UserIndex, oldMap, map)
             Call WriteChangeMap(UserIndex, Map)
             If MapInfo(OldMap).Seguro = 1 And MapInfo(Map).Seguro = 0 And .Stats.ELV < 42 Then
                 ' Msg573=Estás saliendo de una zona segura, recuerda que aquí corres riesgo de ser atacado.
