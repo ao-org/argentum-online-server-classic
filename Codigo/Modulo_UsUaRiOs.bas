@@ -1779,7 +1779,10 @@ Sub UserDie(ByVal UserIndex As Integer)
         Call WriteUpdateSta(UserIndex)
         Call ClearAttackerNpc(UserIndex)
         '<< Guardar o matar mascotas >>
-        Call HandleUserPetsOnDeath(UserIndex)
+        ' En un reto las mascotas esperan afuera: morir en una ronda no las mata ni las descuenta
+        If Not .flags.EnReto Then
+            Call HandleUserPetsOnDeath(UserIndex)
+        End If
         If MapData(.pos.x, .pos.y, .pos.Map).trigger <> e_Trigger.ZONAPELEA And MapInfo(.pos.Map).DropItems Then
             If (.flags.Privilegios And e_PlayerType.User) <> 0 Then
                 If .flags.PendienteDelSacrificio = 0 Then
@@ -2430,7 +2433,8 @@ Private Sub WarpMascotas(ByVal UserIndex As Integer)
     Dim ElementalQuitado As Boolean
     Dim SpawnInvalido    As Boolean
     Dim SpawnPos         As t_WorldPos
-    PermiteMascotas = MapInfo(UserList(UserIndex).pos.Map).NoMascotas = False
+    ' En un reto las mascotas esperan afuera, igual que en un mapa sin mascotas
+    PermiteMascotas = (MapInfo(UserList(UserIndex).pos.map).NoMascotas = False) And Not UserList(UserIndex).flags.EnReto
 
     ' Mascotas domadas
     For i = 1 To MAXMASCOTAS
@@ -2900,6 +2904,10 @@ Public Function CanAttackUser(ByVal attackerIndex As Integer, _
             CanAttackUser = e_AttackInteractionResult.eFightActive
             Exit Function
         End If
+    End If
+    If IsInChallengeCountdown(attackerIndex) Or IsInChallengeCountdown(TargetIndex) Then
+        CanAttackUser = e_AttackInteractionResult.eFightActive
+        Exit Function
     End If
     If AreChallengeTeammates(attackerIndex, TargetIndex) Then
         CanAttackUser = e_AttackInteractionResult.eSameTeam

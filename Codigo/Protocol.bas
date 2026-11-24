@@ -2078,6 +2078,11 @@ Private Sub HandleWalk(ByVal UserIndex As Integer)
             .Stats.NumObj_PezEspecial = 0
             .flags.PescandoEspecial = False
         End If
+        ' Durante la cuenta regresiva del reto no se puede mover: el cliente ya lo frena, esto cubre clientes modificados
+        If IsInChallengeCountdown(UserIndex) Then
+            Call WritePosUpdate(UserIndex)
+            Exit Sub
+        End If
         If UserMod.CanMove(.flags, .Counters) Then
             If .flags.Comerciando Or .flags.Crafteando <> 0 Then Exit Sub
             If .flags.Meditando Then

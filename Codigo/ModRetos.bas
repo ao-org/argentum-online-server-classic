@@ -1101,3 +1101,16 @@ Public Function IsInChallengeFight(ByVal UserIndex As Integer) As Boolean
 IsInChallengeFight_Err:
     Call TraceError(Err.Number, Err.Description, "ModRetos.IsInChallengeFight", Erl)
 End Function
+
+
+Public Function IsInChallengeCountdown(ByVal UserIndex As Integer) As Boolean
+    On Error GoTo IsInChallengeCountdown_Err
+    With UserList(UserIndex)
+        If Not .flags.EnReto Then Exit Function
+        ' La cuenta va de TiempoConteo a 0 (el "¡YA!" sale en 0) y después queda en SIN_CUENTA_REGRESIVA
+        IsInChallengeCountdown = (.Counters.CuentaRegresiva >= 0)
+    End With
+    Exit Function
+IsInChallengeCountdown_Err:
+    Call TraceError(Err.Number, Err.Description, "ModRetos.IsInChallengeCountdown", Erl)
+End Function
