@@ -458,6 +458,18 @@ Dim tStr                        As String
                 .invent.EquippedSaddleSlot = 0
             End If
         End If
+        ' Guardado montado pero la montura ya no está: se conecta desmontado
+        If .flags.Montado = 1 And .invent.EquippedSaddleSlot = 0 Then
+            .flags.Montado = 0
+            .invent.EquippedSaddleObjIndex = 0
+            If .flags.Muerto = 0 Then
+                If .invent.EquippedArmorObjIndex > 0 Then
+                    .Char.body = ObtenerRopaje(UserIndex, ObjData(.invent.EquippedArmorObjIndex))
+                Else
+                    Call SetNakedBody(UserList(UserIndex))
+                End If
+            End If
+        End If
         If .invent.EquippedWorkingToolSlot > 0 Then
             If .invent.Object(.invent.EquippedWorkingToolSlot).ObjIndex Then
                 .invent.EquippedWorkingToolObjIndex = .invent.Object(.invent.EquippedWorkingToolSlot).ObjIndex
