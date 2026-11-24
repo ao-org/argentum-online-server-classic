@@ -3,95 +3,46 @@ Option Explicit
 #If UNIT_TEST = 1 Then
 
 Public Function test_suite_weather() As Boolean
-    Call UnitTesting.RunTest("test_weather_fog_state", test_weather_fog_state())
-    Call UnitTesting.RunTest("test_weather_schedule_configuration", test_weather_schedule_configuration())
-    Call UnitTesting.RunTest("test_weather_probability_decisions", test_weather_probability_decisions())
-    Call UnitTesting.RunTest("test_weather_state_transitions", test_weather_state_transitions())
-    Call UnitTesting.RunTest("test_weather_reset_decisions", test_weather_reset_decisions())
-    Call UnitTesting.RunTest("test_weather_initial_sync", test_weather_initial_sync())
-    Call UnitTesting.RunTest("test_weather_canonical_reset", test_weather_canonical_reset())
+    Call UnitTesting.RunTest("test_weather_configuration", test_weather_configuration())
+    Call UnitTesting.RunTest("test_weather_border_direction", test_weather_border_direction())
+    Call UnitTesting.RunTest("test_weather_invalid_map", test_weather_invalid_map())
+    Call UnitTesting.RunTest("test_weather_reset", test_weather_reset())
     test_suite_weather = True
 End Function
 
-Private Function test_weather_fog_state() As Boolean
-    ServidorNublado = True
-    Nieblando = False
-    If Not IsAtmosphericFogActive() Then Exit Function
-    ServidorNublado = False
-    Nieblando = True
-    If Not IsAtmosphericFogActive() Then Exit Function
-    ServidorNublado = False
-    Nieblando = False
-    test_weather_fog_state = Not IsAtmosphericFogActive()
+Private Function test_weather_configuration() As Boolean
+    If WEATHER_RAIN_MIN_MINUTES > WEATHER_RAIN_MAX_MINUTES Then Exit Function
+    If WEATHER_FOG_MIN_INTENSITY > WEATHER_FOG_MAX_INTENSITY Then Exit Function
+    If WEATHER_FOG_MIN_INTENSITY = 0 Then Exit Function
+    If WEATHER_THUNDER_FIRST_WAVE > WEATHER_THUNDER_LAST_WAVE Then Exit Function
+    ' El cliente solo filtra por mapa los wav 400-404, el 404 es el inicio de lluvia
+    If WEATHER_THUNDER_FIRST_WAVE < 400 Or WEATHER_THUNDER_LAST_WAVE > 403 Then Exit Function
+    If WEATHER_ZONE_MAX_MAPS <> 9 Then Exit Function
+    If WEATHER_MAX_ACTIVE_ZONES <> 3 Then Exit Function
+    test_weather_configuration = WEATHER_ZONE_START_CHANCE_PERCENT = 5
 End Function
 
-Private Function test_weather_schedule_configuration() As Boolean
-    test_weather_schedule_configuration = METEOROLOGICAL_CYCLE_MINUTES = 20 And _
-        METEOROLOGICAL_CLOUD_COUNTDOWN_MINUTES = 11 And _
-        METEOROLOGICAL_PRECIPITATION_COUNTDOWN_MINUTES = 6
+Private Function test_weather_border_direction() As Boolean
+    If GetBorderDirection(50, 5) <> e_DirectionNorth Then Exit Function
+    If GetBorderDirection(50, 96) <> e_DirectionSouth Then Exit Function
+    If GetBorderDirection(96, 50) <> e_DirectionEast Then Exit Function
+    If GetBorderDirection(5, 50) <> e_DirectionWest Then Exit Function
+    ' Esquinas y centro del mapa no son salidas a un vecino
+    If GetBorderDirection(5, 5) <> WEATHER_NO_DIRECTION Then Exit Function
+    If GetBorderDirection(96, 96) <> WEATHER_NO_DIRECTION Then Exit Function
+    test_weather_border_direction = GetBorderDirection(50, 50) = WEATHER_NO_DIRECTION
 End Function
 
-Private Function test_weather_probability_decisions() As Boolean
-    If Not WeatherCloudRollSucceeds(1) Then Exit Function
-    If WeatherCloudRollSucceeds(2) Then Exit Function
-    If Not WeatherPrecipitationRollSucceeds(1, True) Then Exit Function
-    If Not WeatherPrecipitationRollSucceeds(2, True) Then Exit Function
-    If WeatherPrecipitationRollSucceeds(3, True) Then Exit Function
-    If WeatherPrecipitationRollSucceeds(1, False) Then Exit Function
-    test_weather_probability_decisions = True
+Private Function test_weather_invalid_map() As Boolean
+    If IsMapRaining(0) Then Exit Function
+    If IsMapRaining(-1) Then Exit Function
+    test_weather_invalid_map = GetMapFogIntensity(0) = 0
 End Function
 
-Private Function test_weather_state_transitions() As Boolean
+Private Function test_weather_reset() As Boolean
     Call ResetMeteo(False)
-    Call SetAtmosphericFogState(True, 31)
-    If Not ServidorNublado Or Not Nieblando Or IntensidadDeNubes <> 31 Then Exit Function
-    Call SetPrecipitationState(True)
-    If Not Lloviendo Or Not Nebando Then Exit Function
-    Call SetAtmosphericFogState(False)
-    If ServidorNublado Or Nieblando Or IntensidadDeNubes <> 0 Then Exit Function
-    If Not Lloviendo Or Not Nebando Then Exit Function
-    Call SetPrecipitationState(False)
-    test_weather_state_transitions = Not Lloviendo And Not Nebando
-End Function
-
-Private Function test_weather_reset_decisions() As Boolean
-    Dim NotifyRain As Boolean
-    Dim NotifySnow As Boolean
-    Dim NotifyFog As Boolean
-    Call DetermineWeatherResetNotifications(True, True, True, NotifyRain, NotifySnow, NotifyFog)
-    If Not NotifyRain Or Not NotifySnow Or Not NotifyFog Then Exit Function
-    Call DetermineWeatherResetNotifications(False, False, False, NotifyRain, NotifySnow, NotifyFog)
-    test_weather_reset_decisions = Not NotifyRain And Not NotifySnow And Not NotifyFog
-End Function
-
-Private Function test_weather_initial_sync() As Boolean
-    Dim SendRain As Boolean
-    Dim SendSnow As Boolean
-    Dim ToggleFog As Boolean
-    Lloviendo = False
-    Nebando = True
-    ServidorNublado = False
-    Nieblando = False
-    Call DetermineInitialWeatherSynchronization(SendRain, SendSnow, ToggleFog)
-    If SendRain Or Not SendSnow Or ToggleFog Then Exit Function
-    Lloviendo = True
-    ServidorNublado = True
-    Call DetermineInitialWeatherSynchronization(SendRain, SendSnow, ToggleFog)
-    test_weather_initial_sync = SendRain And SendSnow And ToggleFog
-End Function
-
-Private Function test_weather_canonical_reset() As Boolean
-    Lloviendo = True
-    Nebando = True
-    ServidorNublado = True
-    Nieblando = True
-    Call ResetMeteo(False)
-    test_weather_canonical_reset = Not Lloviendo And Not Nebando And _
-        Not ServidorNublado And Not Nieblando And _
-        Not frmMain.Truenos.Enabled And frmMain.TimerMeteorologia.Enabled And _
-        TimerMeteorologico = METEOROLOGICAL_CYCLE_MINUTES And _
-        ProbabilidadNublar = 0 And ProbabilidadLLuvia = 0 And _
-        IntensidadDeNubes = 0
+    If GetRainingZoneCount() <> 0 Then Exit Function
+    test_weather_reset = frmMain.TimerMeteorologia.Enabled And frmMain.Truenos.Enabled
 End Function
 
 #End If

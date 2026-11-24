@@ -832,7 +832,7 @@ Sub HandleCampfireTwigAction(ByVal Map As Integer, ByVal x As Integer, ByVal y A
             Call WriteLocaleMsg(UserIndex, MSG_SACERDOTE_PUEDE_CURARTE_DEBIDO_DEMASIADO_LEJOS, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
             Exit Sub
         End If
-        If MapInfo(Map).lluvia And Lloviendo Then
+        If MapInfo(map).lluvia <> 0 And IsMapRaining(map) Then
             'Msg1076= Esta lloviendo, no podés encender una fogata aquí.
             Call WriteLocaleMsg(UserIndex, MSG_NO_LLOVIENDO_PODES_ENCENDER_FOGATA_AQUI, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
             Exit Sub

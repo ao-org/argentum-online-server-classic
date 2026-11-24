@@ -835,7 +835,6 @@ Public Sub AplicarIntervalos()
     IntervaloTrabajarExtraer = val(txtTrabajoExtraer.Text)
     IntervaloTrabajarConstruir = val(txtTrabajoConstruir.Text)
     IntervaloUserPuedeAtacar = val(txtPuedeAtacar.Text)
-    'frmMain.tLluvia.Interval = val(txtIntervaloPerdidaStaminaLluvia.Text)
     Exit Sub
 AplicarIntervalos_Err:
     Call TraceError(Err.Number, Err.Description, "FrmInterv.AplicarIntervalos", Erl)
@@ -877,7 +876,6 @@ Private Sub Command2_Click()
     Call WriteVar(IniPath & "intervalo.ini", "INTERVALOS", "IntervaloTrabajarConstruir", CStr(IntervaloTrabajarConstruir))
     Call WriteVar(IniPath & "intervalo.ini", "INTERVALOS", "IntervaloUserPuedeAtacar", CStr(IntervaloUserPuedeAtacar))
     Call WriteVar(IniPath & "intervalo.ini", "INTERVALOS", "IntervaloNpcOwner", CStr(IntervaloNpcOwner))
-    'Call WriteVar(IniPath & "intervalo.ini", "INTERVALOS", "IntervaloPerdidaStaminaLluvia", frmMain.tLluvia.Interval)
     MsgBox "Los intervalos se han guardado sin problemas"
     Exit Sub
 Err:

@@ -2232,15 +2232,7 @@ Public Sub HandleRainToggle(ByVal UserIndex As Integer)
             Exit Sub
         End If
         Call LogGM(GetUserRealName(UserIndex), "/LLUVIA")
-        Lloviendo = Not Lloviendo
-        Nebando = Not Nebando
-        Call SendData(SendTarget.ToAll, 0, PrepareMessageRainToggle())
-        Call SendData(SendTarget.ToAll, 0, PrepareMessageNevarToggle())
-        If Lloviendo Then
-            Call SendData(SendTarget.ToAll, 0, PrepareMessagePlayWave(404, NO_3D_SOUND, NO_3D_SOUND)) ' Explota un trueno
-            Call SendData(SendTarget.ToAll, 0, PrepareMessageFlashScreen(&HF5D3F3, 250)) 'Rayo
-            Call ApagarFogatas
-        End If
+        Call ToggleMapWeather(.pos.map, 0)
     End With
     Exit Sub
 HandleRainToggle_Err:
@@ -3045,8 +3037,6 @@ Public Sub HandleChangeMapInfoZone(ByVal UserIndex As Integer)
             Else
                 'Msg992= Opciones para terreno: 'BOSQUE', 'NIEVE', 'DESIERTO', 'CIUDAD', 'CAMPO', 'DUNGEON'
                 Call WriteLocaleMsg(UserIndex, MSG_OPCIONES_TERRENO_BOSQUE_NIEVE_DESIERTO_CIUDAD_CAMPO_DUNGEON_992, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
-                'Msg993= Igualmente, el Ã­nico Ã­til es 'DUNGEON' ya que al ingresarlo, NO se sentirÃ­ el efecto de la lluvia en este mapa.
-                Call WriteLocaleMsg(UserIndex, MSG_NO_IGUALMENTE_INICO_ITIL_DUNGEON_INGRESARLO_SENTIRI_EFECTO_LLUVIA, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
             End If
         End If
     End With
@@ -3464,8 +3454,7 @@ Public Sub HandleNieveToggle(ByVal UserIndex As Integer)
             Exit Sub
         End If
         Call LogGM(GetUserRealName(UserIndex), "/NIEVE")
-        Nebando = Not Nebando
-        Call SendData(SendTarget.ToAll, 0, PrepareMessageNevarToggle())
+        Call ToggleMapWeather(.pos.map, 0)
     End With
     Exit Sub
 HandleNieveToggle_Err:
@@ -3482,18 +3471,7 @@ Public Sub HandleNieblaToggle(ByVal UserIndex As Integer)
             Exit Sub
         End If
         Call LogGM(GetUserRealName(UserIndex), "/NIEBLA")
-        Dim EnableFog As Boolean
-        Dim FogIntensity As Byte
-        EnableFog = Not IsAtmosphericFogActive()
-        If EnableFog Then
-            FogIntensity = RandomNumber(10, 45)
-            Call SetAtmosphericFogState(True, FogIntensity)
-        Else
-            FogIntensity = IntensidadDeNubes
-            Call SetAtmosphericFogState(False)
-            frmMain.Truenos.Enabled = False
-        End If
-        Call SendData(SendTarget.ToAll, 0, PrepareMessageNieblandoToggle(FogIntensity))
+        Call ToggleMapWeather(.pos.map, WEATHER_CLOUD_LEAD_MINUTES)
     End With
     Exit Sub
 HandleNieblaToggle_Err:

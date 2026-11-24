@@ -1618,6 +1618,7 @@ Sub LoadMapData()
         DoEvents
     Next Map
     frmCargando.ToMapLbl.Visible = False
+    Call BuildWeatherNeighbors(NormalMapsCount)
     Call InstanceManager.InitializeInstanceHeap(InstanceMapCount, NormalMapsCount + 1)
     Exit Sub
 man:
@@ -1841,6 +1842,7 @@ Public Sub CargarMapaFormatoCSM(ByVal Map As Long, ByVal MAPFl As String)
     MapInfo(Map).ResuCiudad = val(GetVar(DatPath & "Map.dat", "RESUCIUDAD", Map)) <> 0
     MapInfo(Map).letter_grh = MapDat.letter_grh
     MapInfo(Map).lluvia = MapDat.lluvia
+    MapInfo(map).Nieve = MapDat.Nieve
     MapInfo(Map).music_numberHi = MapDat.music_numberHi
     MapInfo(Map).music_numberLow = MapDat.music_numberLow
     MapInfo(Map).niebla = MapDat.niebla
@@ -2403,8 +2405,6 @@ Sub LoadIntervalos()
     IntervaloMagiaGolpe = val(Lector.GetValue("INTERVALOS", "IntervaloMagiaGolpe"))
     IntervaloGolpeMagia = val(Lector.GetValue("INTERVALOS", "IntervaloGolpeMagia"))
     IntervaloNpcOwner = val(Lector.GetValue("INTERVALOS", "IntervaloNpcOwner", "10000"))
-    'frmMain.tLluvia.Interval = val(Lector.GetValue("INTERVALOS", "IntervaloPerdidaStaminaLluvia"))
-    'FrmInterv.txtIntervaloPerdidaStaminaLluvia.Text = frmMain.tLluvia.Interval
     MinutosWs = val(Lector.GetValue("INTERVALOS", "IntervaloWS"))
     If MinutosWs < 1 Then MinutosWs = 10
     IntervaloCerrarConexion = val(Lector.GetValue("INTERVALOS", "IntervaloCerrarConexion"))
