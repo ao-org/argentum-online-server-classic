@@ -1422,12 +1422,7 @@ End Sub
 
 Public Function PuedeAtacar(ByVal attackerIndex As Integer, ByVal VictimIndex As Integer) As Boolean
     On Error GoTo PuedeAtacar_Err
-    '***************************************************
-    'Autor: Unknown
-    'Last Modification: 24/01/2007
-    'Returns true if the AttackerIndex is allowed to attack the VictimIndex.
-    '24/01/2007 Pablo (ToxicWaste) - Ordeno todo y agrego situacion de Defensa en ciudad Armada y Caos.
-    '***************************************************
+
     Dim t    As e_Trigger6
     Dim rank As Integer
     'MUY importante el orden de estos "IF"...
@@ -1444,6 +1439,12 @@ Public Function PuedeAtacar(ByVal attackerIndex As Integer, ByVal VictimIndex As
             PuedeAtacar = False
             Exit Function
         End If
+    End If
+    If IsInChallengeCountdown(attackerIndex) Or IsInChallengeCountdown(VictimIndex) Then
+        'Msg1044= No podés atacar en este momento.
+        Call WriteLocaleMsg(attackerIndex, MSG_NO_PODES_ATACAR_EN_ESTE_MOMENTO, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_FIGHT)
+        PuedeAtacar = False
+        Exit Function
     End If
     'No podes atacar a alguien muerto
     If UserList(VictimIndex).flags.Muerto = 1 Then
