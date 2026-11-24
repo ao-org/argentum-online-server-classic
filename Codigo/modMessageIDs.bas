@@ -1506,6 +1506,11 @@ Public Const MSG_AUTOCOMBAT_CANT_MEDITATE As Integer = 2306
 Public Const MSG_PET_DAMAGED_BY As Integer = 2307
 Public Const MSG_GLOBAL_MENSAJE_PALABRAS_PROHIBIDAS As Integer = 2308
 
+Public Const MSG_TOURNAMENT_CANCELLED_BY_ADMIN          As Integer = 229
+Public Const MSG_CLASS_CANNOT_PARTICIPATE               As Integer = 398
+Public Const MSG_EVENT_ALREADY_ACTIVE_CANCEL_FIRST      As Integer = 1015
+Public Const MSG_TOURNAMENT_PARTICIPANT_LEFT_SLOT_FREE  As Integer = 2311
+Public Const MSG_TOURNAMENT_PLAYER_JOINED               As Integer = 2312
 ' Inframundo
 Public Const MSG_UNDERWORLD_CLOSING_SOON As Integer = 2235
 Public Const MSG_UNDERWORLD_CLOSED As Integer = 2309
