@@ -846,6 +846,16 @@ Public Sub EfectoFrio(ByVal UserIndex As Integer)
             .Counters.Frio = .Counters.Frio + 1
         Else
             If MapInfo(.pos.Map).terrain = Nieve Then
+                If IsUserInCampfireRange(UserIndex) Then
+                    If Not .flags.CampfireWarmthNotified Then
+                        .flags.CampfireWarmthNotified = True
+                        ' Msg2316=El calor de la fogata te protege del frío.
+                        Call WriteLocaleMsg(UserIndex, MSG_CAMPFIRE_WARMTH_PROTECTS, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
+                    End If
+                    .Counters.Frio = 0
+                    Exit Sub
+                End If
+                .flags.CampfireWarmthNotified = False
                 'Msg2130=¡Tengo mucho frío!
                 Call SendData(SendTarget.ToIndex, UserIndex, PrepareLocalizedChatOverHead(MSG_TOO_COLD, UserList(UserIndex).Char.charindex, vbWhite))
                 ' Msg512=¡Estás muriendo de frío, abrígate o morirás!
@@ -1305,9 +1315,11 @@ End Sub
 Public Function HambreYSed(ByVal UserIndex As Integer) As Boolean
     On Error GoTo HambreYSed_Err
     If (UserList(UserIndex).flags.Privilegios And e_PlayerType.User) = 0 Then Exit Function
+    Dim survivalSkill As Integer
+    survivalSkill = UserList(UserIndex).Stats.UserSkills(e_Skill.Supervivencia)
     'Sed
     If UserList(UserIndex).Stats.MinAGU > 0 Then
-        If UserList(UserIndex).Counters.AGUACounter < IntervaloSed Then
+        If UserList(UserIndex).Counters.AGUACounter < GetSurvivalNeedsInterval(IntervaloSed, survivalSkill) Then
             UserList(UserIndex).Counters.AGUACounter = UserList(UserIndex).Counters.AGUACounter + 1
         Else
             UserList(UserIndex).Counters.AGUACounter = 0
@@ -1320,7 +1332,7 @@ Public Function HambreYSed(ByVal UserIndex As Integer) As Boolean
     End If
     'hambre
     If UserList(UserIndex).Stats.MinHam > 0 Then
-        If UserList(UserIndex).Counters.COMCounter < IntervaloHambre Then
+        If UserList(UserIndex).Counters.COMCounter < GetSurvivalNeedsInterval(IntervaloHambre, survivalSkill) Then
             UserList(UserIndex).Counters.COMCounter = UserList(UserIndex).Counters.COMCounter + 1
         Else
             UserList(UserIndex).Counters.COMCounter = 0
@@ -1351,6 +1363,9 @@ Public Sub Sanar(ByVal UserIndex As Integer, ByRef EnviarStats As Boolean, ByVal
         UserList(UserIndex).Counters.HPCounter = UserList(UserIndex).Counters.HPCounter + 1
     Else
         mashit = RandomNumber(Porcentaje(UserList(UserIndex).Stats.MaxHp, 5), Porcentaje(UserList(UserIndex).Stats.MaxHp, 10)) * UserMod.GetSelfHealingBonus(UserList(UserIndex))
+        If UserList(UserIndex).flags.Descansar Then
+            mashit = mashit * GetSurvivalRestHealMultiplier(UserList(UserIndex).Stats.UserSkills(e_Skill.Supervivencia))
+        End If
         UserList(UserIndex).Counters.HPCounter = 0
         Call UserMod.ModifyHealth(UserIndex, mashit)
         ' Msg519=Has sanado.
@@ -1362,6 +1377,26 @@ Public Sub Sanar(ByVal UserIndex As Integer, ByRef EnviarStats As Boolean, ByVal
 Sanar_Err:
     Call TraceError(Err.Number, Err.Description, "General.Sanar", Erl)
 End Sub
+
+Public Function GetSurvivalRestHealMultiplier(ByVal survivalSkill As Integer) As Single
+    On Error GoTo GetSurvivalRestHealMultiplier_Err
+    survivalSkill = Min(max(survivalSkill, 0), MAXSKILLPOINTS)
+    GetSurvivalRestHealMultiplier = 1 + (survivalSkill / MAXSKILLPOINTS) * SURVIVAL_REST_HEAL_MAX_BONUS
+    Exit Function
+GetSurvivalRestHealMultiplier_Err:
+    GetSurvivalRestHealMultiplier = 1
+    Call TraceError(Err.Number, Err.Description, "General.GetSurvivalRestHealMultiplier", Erl)
+End Function
+
+Public Function GetSurvivalNeedsInterval(ByVal baseInterval As Integer, ByVal survivalSkill As Integer) As Integer
+    On Error GoTo GetSurvivalNeedsInterval_Err
+    survivalSkill = Min(max(survivalSkill, 0), MAXSKILLPOINTS)
+    GetSurvivalNeedsInterval = baseInterval * (1 + (survivalSkill / MAXSKILLPOINTS) * SURVIVAL_NEEDS_INTERVAL_MAX_BONUS)
+    Exit Function
+GetSurvivalNeedsInterval_Err:
+    GetSurvivalNeedsInterval = baseInterval
+    Call TraceError(Err.Number, Err.Description, "General.GetSurvivalNeedsInterval", Erl)
+End Function
 
 Public Sub CargaNpcsDat(Optional ByVal ActualizarNPCsExistentes As Boolean = False)
     On Error GoTo CargaNpcsDat_Err

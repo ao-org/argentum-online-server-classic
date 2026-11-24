@@ -1398,6 +1398,9 @@ Public Const NUMRAZAS       As Byte = 6
 ''
 ' Valor maximo de cada skill
 Public Const MAXSKILLPOINTS As Byte = 100
+
+Public Const SURVIVAL_REST_HEAL_MAX_BONUS      As Single = 1   ' Bonus maximo de curacion al descansar en fogata (1 = +100% con Supervivencia al maximo)
+Public Const SURVIVAL_NEEDS_INTERVAL_MAX_BONUS As Single = 1   ' Bonus maximo del intervalo de hambre y sed (1 = +100% con Supervivencia al maximo)
 ''
 ' Cantidad maxima de mascotas
 Public Const MAXMASCOTAS    As Byte = 3
@@ -1561,7 +1564,7 @@ Public Enum e_OBJType
     'otLibre = 12
     otDrinks = 13
     otWood = 14
-    'otLibre = 15
+    otCampfire = 15
     otShield = 16
     otHelmet = 17
     otWorkingTools = 18
@@ -2749,6 +2752,7 @@ Public Type t_UserFlags
     Oculto As Byte
     Desnudo As Byte
     Descansar As Boolean
+    CampfireWarmthNotified As Boolean
     Hechizo As Integer
     TomoPocion As Boolean
     TipoPocion As Byte

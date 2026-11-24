@@ -261,33 +261,12 @@ Private Sub RefreshMapWeather(ByVal mapIndex As Integer)
         If isRaining Then
             Call SendData(SendTarget.ToMap, mapIndex, PrepareMessagePlayWave(WEATHER_RAIN_START_WAVE, NO_3D_SOUND, NO_3D_SOUND))
             Call SendData(SendTarget.ToMap, mapIndex, PrepareMessageFlashScreen(WEATHER_RAIN_START_FLASH_COLOR, WEATHER_RAIN_START_FLASH_MS))
-            Call ExtinguishMapCampfires(mapIndex)
+            Call ScheduleRainExtinguishCampfires(mapIndex)
         End If
     End If
     Exit Sub
 RefreshMapWeather_Err:
     Call TraceError(Err.Number, Err.Description, "ModClimas.RefreshMapWeather", Erl)
-End Sub
-
-Private Sub ExtinguishMapCampfires(ByVal mapIndex As Integer)
-    On Error GoTo ExtinguishMapCampfires_Err
-    Dim extinguishedCampfire As t_Obj
-    Dim TileX                As Integer
-    Dim TileY                As Integer
-    If MapInfo(mapIndex).lluvia = 0 Then Exit Sub
-    extinguishedCampfire.ObjIndex = FOGATA_APAG
-    extinguishedCampfire.Amount = 1
-    For TileY = YMinMapSize To YMaxMapSize
-        For TileX = XMinMapSize To XMaxMapSize
-            If MapData(TileX, TileY, mapIndex).ObjInfo.ObjIndex = FOGATA Then
-                Call EraseObj(GetMaxInvOBJ(), mapIndex, TileX, TileY)
-                Call MakeObj(extinguishedCampfire, mapIndex, TileX, TileY)
-            End If
-        Next TileX
-    Next TileY
-    Exit Sub
-ExtinguishMapCampfires_Err:
-    Call TraceError(Err.Number, Err.Description, "ModClimas.ExtinguishMapCampfires", Erl)
 End Sub
 
 Public Sub ProcessWeatherMinute()

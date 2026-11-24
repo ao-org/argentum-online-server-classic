@@ -753,6 +753,7 @@ Private Sub Segundo_Timer()
     LastTime = CurTime
     ' -----------------------------------
     Call PasarSegundo 'sistema de desconexion de 10 segs
+    Call ProcessActiveCampfires
     Call CheckDisconnectedUsers
     Call PerformTimeLimitCheck(PerformanceTimer, "Segundo_Timer", 100)
     Exit Sub
