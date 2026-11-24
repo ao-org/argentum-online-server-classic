@@ -517,7 +517,7 @@ Dim tStr                        As String
             Call WriteLocaleMsg(UserIndex, MSG_CHARACTER_FOUND_ON_ILLEGAL_POSITION, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFOBOLD)
         End If
         
-        If IsFeatureEnabled("underworld") And IsUnderworldInitialized Then
+        If IsUnderworldInitialized Then
             If Not IsUnderworldOpen And IsUserIndexInsideTheUnderworld(UserIndex) Then
                 .pos.Map = Cities(HomeCityId).Map
                 .pos.x = Cities(HomeCityId).x
