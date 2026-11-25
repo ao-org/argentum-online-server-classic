@@ -56,7 +56,7 @@ for file in $(git status --porcelain | grep -E "^.{1}M" | grep -Ev "^R" | cut -c
   PATCHFILE=$(mktemp)
 
   # Contenido del índice (HEAD)
-  git cat-file -p ":$file" > "$ORIGFILE"
+  git cat-file --filters --path="$file" "$(git rev-parse ":$file")" > "$ORIGFILE"
 
   # Generar el patch ignorando casing/CR/blank
   make_patch "$ORIGFILE" "$file" "$PATCHFILE"
@@ -83,7 +83,7 @@ for file in $(git status --porcelain | cut -c 4- | grep -E "\.vbp$"); do
   LEFT_CUT=$(mktemp)
   RIGHT_CUT=$(mktemp)
 
-  git cat-file -p ":$file" > "$ORIGFILE"
+  git cat-file --filters --path="$file" "$(git rev-parse ":$file")" > "$ORIGFILE"
 
   # Tomamos solo los primeros 3 campos separados por '#'
   # (como tenías), tanto de índice como del working.
