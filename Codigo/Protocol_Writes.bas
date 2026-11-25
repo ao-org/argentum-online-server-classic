@@ -3987,6 +3987,38 @@ PrepareMessageObjectDelete_Err:
     Call TraceError(Err.Number, Err.Description, "Argentum20Server.Protocol_Writes.PrepareMessageObjectDelete", Erl)
 End Function
 
+Public Function PrepareMessageCampfireExtinguished(ByVal x As Byte, ByVal y As Byte)
+    On Error GoTo PrepareMessageCampfireExtinguished_Err
+    Call Writer.WriteInt16(ServerPacketID.eCampfireExtinguished)
+    Call Writer.WriteInt8(x)
+    Call Writer.WriteInt8(y)
+    Exit Function
+PrepareMessageCampfireExtinguished_Err:
+    Call Writer.Clear
+    Call TraceError(Err.Number, Err.Description, "Protocol_Writes.PrepareMessageCampfireExtinguished", Erl)
+End Function
+
+Public Sub WriteCampfireState(ByVal UserIndex As Integer, ByVal x As Byte, ByVal y As Byte, ByVal campfireSecondsLeft As Long, ByVal rawObj As Integer, ByVal cookedObj As Integer, _
+        ByVal cookTotal As Integer, ByVal cookRetrieved As Integer, ByVal cookReady As Integer, ByVal secondsToNext As Long, ByVal secondsPerUnit As Long)
+    On Error GoTo WriteCampfireState_Err
+    Call Writer.WriteInt16(ServerPacketID.eCampfireState)
+    Call Writer.WriteInt8(x)
+    Call Writer.WriteInt8(y)
+    Call Writer.WriteInt32(campfireSecondsLeft)
+    Call Writer.WriteInt16(rawObj)
+    Call Writer.WriteInt16(cookedObj)
+    Call Writer.WriteInt16(cookTotal)
+    Call Writer.WriteInt16(cookRetrieved)
+    Call Writer.WriteInt16(cookReady)
+    Call Writer.WriteInt32(secondsToNext)
+    Call Writer.WriteInt32(secondsPerUnit)
+    Call modSendData.SendData(ToIndex, UserIndex)
+    Exit Sub
+WriteCampfireState_Err:
+    Call Writer.Clear
+    Call TraceError(Err.Number, Err.Description, "Protocol_Writes.WriteCampfireState", Erl)
+End Sub
+
 ''
 ' Prepares the "BlockPosition" message and returns it.
 '

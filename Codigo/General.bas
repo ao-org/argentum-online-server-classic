@@ -558,6 +558,8 @@ Sub Main()
     Call LoadBlackSmithElementalRunes
     frmCargando.Label1(2).Caption = "Cargando Objetos de Carpintería"
     Call LoadObjCarpintero
+    frmCargando.Label1(2).Caption = "Cargando Recetas de Cocina"
+    Call LoadObjCocinero
     frmCargando.Label1(2).Caption = "Cargando Objetos de Alquimista"
     Call LoadObjAlquimista
     frmCargando.Label1(2).Caption = "Cargando Objetos de Sastre"

@@ -1860,6 +1860,9 @@ Sub UseInvItem(ByVal UserIndex As Integer, ByVal Slot As Byte, ByVal ByClick As 
                 If .invent.Object(Slot).Equipped = 0 Then
                     Exit Sub
                 End If
+            Case e_OBJType.otRawFood
+                ' Msg2326=Esto está crudo, no se puede comer. Cocinalo en una fogata.
+                Call WriteLocaleMsg(UserIndex, MSG_RAW_FOOD_MUST_COOK, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
             Case e_OBJType.otWorkingTools, e_OBJType.otMinerals
                 If .flags.Muerto = 1 Then
                     Call WriteLocaleMsg(UserIndex, MSG_MUERTO, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)

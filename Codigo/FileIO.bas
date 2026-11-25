@@ -1020,6 +1020,35 @@ LoadObjCarpintero_Err:
     Call TraceError(Err.Number, Err.Description, "ES.LoadObjCarpintero", Erl)
 End Sub
 
+Sub LoadObjCocinero()
+    On Error GoTo LoadObjCocinero_Err
+    Dim recipeCount  As Integer
+    Dim recipeIndex  As Integer
+    Dim rawObj       As Integer
+    Dim cookedObj    As Integer
+    Dim cookSeconds  As Long
+    If NumObjDatas < 1 Then
+        ReDim CookedObjByRawObj(0) As Integer
+        ReDim CookSecondsByRawObj(0) As Long
+        Exit Sub
+    End If
+    ReDim CookedObjByRawObj(1 To NumObjDatas) As Integer
+    ReDim CookSecondsByRawObj(1 To NumObjDatas) As Long
+    recipeCount = val(GetVar(DatPath & "ObjCocinero.dat", "INIT", "NumRecetas"))
+    For recipeIndex = 1 To recipeCount
+        rawObj = val(GetVar(DatPath & "ObjCocinero.dat", "RECETA" & recipeIndex, "Crudo"))
+        cookedObj = val(GetVar(DatPath & "ObjCocinero.dat", "RECETA" & recipeIndex, "Cocido"))
+        cookSeconds = val(GetVar(DatPath & "ObjCocinero.dat", "RECETA" & recipeIndex, "Segundos"))
+        If rawObj >= 1 And rawObj <= NumObjDatas And cookedObj >= 1 And cookedObj <= NumObjDatas And cookSeconds > 0 Then
+            CookedObjByRawObj(rawObj) = cookedObj
+            CookSecondsByRawObj(rawObj) = cookSeconds
+        End If
+    Next recipeIndex
+    Exit Sub
+LoadObjCocinero_Err:
+    Call TraceError(Err.Number, Err.Description, "ES.LoadObjCocinero", Erl)
+End Sub
+
 Sub LoadObjAlquimista()
     On Error GoTo LoadObjAlquimista_Err
     Dim n As Integer, lc As Integer

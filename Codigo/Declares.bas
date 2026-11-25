@@ -1401,6 +1401,7 @@ Public Const MAXSKILLPOINTS As Byte = 100
 
 Public Const SURVIVAL_REST_HEAL_MAX_BONUS      As Single = 1   ' Bonus maximo de curacion al descansar en fogata (1 = +100% con Supervivencia al maximo)
 Public Const SURVIVAL_NEEDS_INTERVAL_MAX_BONUS As Single = 1   ' Bonus maximo del intervalo de hambre y sed (1 = +100% con Supervivencia al maximo)
+Public Const SURVIVAL_COOK_TIME_MAX_REDUCTION  As Single = 0.5 ' Reduccion maxima del tiempo de coccion (0.5 = mitad con Supervivencia al maximo)
 ''
 ' Cantidad maxima de mascotas
 Public Const MAXMASCOTAS    As Byte = 3
@@ -1606,6 +1607,7 @@ Public Enum e_OBJType
     otElementalRune = 55
     otFactionForgiveness = 56
     otCollectibleCard = 57
+    otRawFood = 58
     otElse = 100
 End Enum
 
@@ -2753,6 +2755,14 @@ Public Type t_UserFlags
     Desnudo As Byte
     Descansar As Boolean
     CampfireWarmthNotified As Boolean
+    OpenCampfireId         As Long
+    CookingCampfireId      As Long
+    CookingRawObj          As Integer
+    CookingCookedObj       As Integer
+    CookingTotal           As Integer
+    CookingRetrieved       As Integer
+    CookingStartTick       As Long
+    CookingUnitMs          As Long
     Hechizo As Integer
     TomoPocion As Boolean
     TipoPocion As Byte
