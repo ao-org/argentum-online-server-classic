@@ -6423,9 +6423,9 @@ Private Sub HandleCancelDuel(ByVal UserIndex As Integer)
     With UserList(UserIndex)
         reader.ReadInt16
         If .flags.SolicitudReto.Estado <> e_SolicitudRetoEstado.Libre Then
-            Call CancelarSolicitudReto(UserIndex, GetUserDisplayName(UserIndex) & " ha cancelado la solicitud.")
+            Call CancelarSolicitudReto(UserIndex, MSG_RETO_CANCELO_SOLICITUD, GetUserDisplayName(UserIndex))
         ElseIf IsValidUserRef(.flags.AceptoReto) Then
-            Call CancelarSolicitudReto(.flags.AceptoReto.ArrayIndex, GetUserDisplayName(UserIndex) & " ha cancelado su admisión.")
+            Call CancelarSolicitudReto(.flags.AceptoReto.ArrayIndex, MSG_RETO_CANCELO_ADMISION, GetUserDisplayName(UserIndex))
         End If
     End With
 End Sub

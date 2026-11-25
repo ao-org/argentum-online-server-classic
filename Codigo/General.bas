@@ -1500,7 +1500,7 @@ Sub PasarSegundo()
                 End If
                 If .Counters.CuentaRegresiva >= 0 Then
                     If .Counters.CuentaRegresiva > 0 Then
-                        Call WriteConsoleMsg(i, ">>>  " & .Counters.CuentaRegresiva & "  <<<", e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Gris)
+                        Call WriteLocaleMsg(i, MSG_RETO_CUENTA_REGRESIVA, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Gris, CStr(.Counters.CuentaRegresiva))
                     Else
                         'Msg1019= >>> YA! <<<
                         Call WriteLocaleMsg(i, MSG_YA, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_FIGHT)

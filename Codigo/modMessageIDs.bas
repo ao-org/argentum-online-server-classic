@@ -1521,5 +1521,23 @@ Public Const MSG_CAMPFIRE_BURNING           As Integer = 2314
 Public Const MSG_CAMPFIRE_LIMIT_REACHED     As Integer = 2315
 Public Const MSG_CAMPFIRE_WARMTH_PROTECTS   As Integer = 2316
 
-
+Public Const MSG_RETO_CANCELO_SOLICITUD             As Integer = 2317
+Public Const MSG_RETO_CANCELO_ADMISION              As Integer = 2318
+Public Const MSG_RETO_JUGADOR_DESCONECTADO          As Integer = 2319
+Public Const MSG_RETO_JUGADOR_NO_PUEDE_ENTRAR       As Integer = 2320
+Public Const MSG_RETO_JUGADOR_SIN_ORO               As Integer = 2321
+Public Const MSG_RETO_JUGADOR_DEMASIADAS_POCIONES   As Integer = 2322
+Public Const MSG_RETO_INVITACION                    As Integer = 2323
+Public Const MSG_RETO_DETALLE                       As Integer = 2324
+Public Const MSG_RETO_DETALLE_CON_ITEMS             As Integer = 2325
+Public Const MSG_RETO_MAXIMO_POCIONES               As Integer = 2326
+Public Const MSG_RETO_ESCRIBE_ACEPTAR               As Integer = 2327
+Public Const MSG_RETO_JUGADOR_ACEPTO                As Integer = 2328
+Public Const MSG_RETO_FALTAN_ACEPTAR                As Integer = 2329
+Public Const MSG_RETO_TODOS_ACEPTARON               As Integer = 2330
+Public Const MSG_RETO_SIN_SALAS                     As Integer = 2331
+Public Const MSG_RETO_DESCALIFICADO_DESCONEXION     As Integer = 2332
+Public Const MSG_RETO_JUGADOR_ABANDONO              As Integer = 2333
+Public Const MSG_RETO_CUENTA_REGRESIVA              As Integer = 2334
+Public Const MSG_APUESTA_MAXIMA_MONEDAS_ORO         As Integer = 2335
 
