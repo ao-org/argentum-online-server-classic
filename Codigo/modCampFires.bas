@@ -14,6 +14,7 @@ Public Const CAMPFIRE_MAX_DURATION_MS           As Long = CAMPFIRE_BASE_DURATION
 Public Const CAMPFIRE_COAL_MS                   As Long = 60000     ' 1 minuto por carbon
 Public Const CAMPFIRE_PANEL_MAX_DISTANCE        As Integer = 2
 Public Const COOK_MIN_UNIT_MS                   As Long = 1000
+Public Const COOK_MAX_TOTAL                     As Integer = 10000
 
 Public CookedObjByRawObj()   As Integer
 Public CookSecondsByRawObj() As Long
@@ -223,33 +224,45 @@ Public Sub CookAtOpenCampfire(ByVal UserIndex As Integer, ByVal inventorySlot As
     If campfireIndex = 0 Then Exit Sub
     Call CheckCookingLost(UserIndex)
     With UserList(UserIndex)
-        If .flags.CookingTotal > 0 Then
-            ' Msg2319=Ya estás cocinando algo. Retirá tu comida primero.
-            Call WriteLocaleMsg(UserIndex, MSG_CAMPFIRE_ALREADY_COOKING, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
-            Exit Sub
-        End If
         If inventorySlot < 1 Or inventorySlot > .CurrentInventorySlots Then Exit Sub
         rawObj = .invent.Object(inventorySlot).ObjIndex
         If rawObj < 1 Or rawObj > UBound(CookedObjByRawObj) Then
-            ' Msg2318=Eso no se puede cocinar.
             Call WriteLocaleMsg(UserIndex, MSG_CAMPFIRE_NOT_COOKABLE, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
             Exit Sub
         End If
         If CookedObjByRawObj(rawObj) = 0 Then
-            ' Msg2318=Eso no se puede cocinar.
             Call WriteLocaleMsg(UserIndex, MSG_CAMPFIRE_NOT_COOKABLE, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
             Exit Sub
         End If
         If cookAmount < 1 Then Exit Sub
         If cookAmount > .invent.Object(inventorySlot).Amount Then cookAmount = .invent.Object(inventorySlot).Amount
-        survivalSkill = Min(max(.Stats.UserSkills(e_Skill.Supervivencia), 0), MAXSKILLPOINTS)
-        .flags.CookingCampfireId = m_Campfires(campfireIndex).campfireId
-        .flags.CookingRawObj = rawObj
-        .flags.CookingCookedObj = CookedObjByRawObj(rawObj)
-        .flags.CookingTotal = cookAmount
-        .flags.CookingRetrieved = 0
-        .flags.CookingStartTick = GetTickCountRaw()
-        .flags.CookingUnitMs = max(COOK_MIN_UNIT_MS, CookSecondsByRawObj(rawObj) * 1000 * (1 - (survivalSkill / MAXSKILLPOINTS) * SURVIVAL_COOK_TIME_MAX_REDUCTION))
+        If .flags.CookingTotal > 0 Then
+            ' Ya hay una coccion: solo se puede apilar la misma comida en la misma fogata
+            If .flags.CookingCampfireId <> m_Campfires(campfireIndex).campfireId Then
+                Call WriteLocaleMsg(UserIndex, MSG_CAMPFIRE_COOKING_ELSEWHERE, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
+                Exit Sub
+            End If
+            If .flags.CookingRawObj <> rawObj Then
+                Call WriteLocaleMsg(UserIndex, MSG_CAMPFIRE_ALREADY_COOKING, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+                Exit Sub
+            End If
+            If .flags.CookingTotal + cookAmount > COOK_MAX_TOTAL Then cookAmount = COOK_MAX_TOTAL - .flags.CookingTotal
+            If cookAmount < 1 Then Exit Sub
+            ' Si todo lo anterior ya estaba listo, las nuevas unidades empiezan ahora
+            If GetCookingReadyCount(UserIndex) >= .flags.CookingTotal Then
+                .flags.CookingStartTick = AddMod32(GetTickCountRaw(), -(CLng(.flags.CookingTotal) * .flags.CookingUnitMs))
+            End If
+            .flags.CookingTotal = .flags.CookingTotal + cookAmount
+        Else
+            survivalSkill = Min(max(.Stats.UserSkills(e_Skill.Supervivencia), 0), MAXSKILLPOINTS)
+            .flags.CookingCampfireId = m_Campfires(campfireIndex).campfireId
+            .flags.CookingRawObj = rawObj
+            .flags.CookingCookedObj = CookedObjByRawObj(rawObj)
+            .flags.CookingTotal = cookAmount
+            .flags.CookingRetrieved = 0
+            .flags.CookingStartTick = GetTickCountRaw()
+            .flags.CookingUnitMs = max(COOK_MIN_UNIT_MS, CookSecondsByRawObj(rawObj) * 1000 * (1 - (survivalSkill / MAXSKILLPOINTS) * SURVIVAL_COOK_TIME_MAX_REDUCTION))
+        End If
     End With
     Call QuitarUserInvItem(UserIndex, inventorySlot, cookAmount)
     Call UpdateUserInv(False, UserIndex, inventorySlot)
