@@ -925,6 +925,7 @@ Sub ResetUserFlags(ByVal UserIndex As Integer)
         .TomoPocion = False
         .Descuento = vbNullString
         .Descansar = False
+        .CampfireWarmthNotified = False
         .Navegando = 0
         .Oculto = 0
         .Envenenado = 0

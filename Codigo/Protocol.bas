@@ -4742,7 +4742,7 @@ Private Sub HandleRest(ByVal UserIndex As Integer)
             Call WriteLocaleMsg(UserIndex, MSG_MUERTO_SOLO_PODES_USAR_ITEMS_CUANDO_VIVO, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_New_Naranja)
             Exit Sub
         End If
-        If HayOBJarea(.pos, FOGATA) Then
+        If IsUserInCampfireRange(UserIndex) Then
             Call WriteRestOK(UserIndex)
             If Not .flags.Descansar Then
                 ' Msg753=Te acomodás junto a la fogata y comenzas a descansar.

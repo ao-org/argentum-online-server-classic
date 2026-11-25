@@ -863,6 +863,11 @@ Sub HandleCampfireTwigAction(ByVal Map As Integer, ByVal x As Integer, ByVal y A
                 obj.ObjIndex = FOGATA
                 obj.amount = 1
                 'Msg1079= Has prendido la fogata.
+                If Not RegisterCampfire(Map, X, Y, .Stats.UserSkills(e_Skill.Supervivencia)) Then
+                    ' Msg2315=Hay demasiadas fogatas encendidas, no podés prender otra.
+                    Call WriteLocaleMsg(UserIndex, MSG_CAMPFIRE_LIMIT_REACHED, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+                    Exit Sub
+                End If
                 Call WriteLocaleMsg(UserIndex, MSG_PRENDIDO_FOGATA, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_PROMEDIO_MAYOR)
                 Call MakeObj(obj, Map, x, y)
             Else
