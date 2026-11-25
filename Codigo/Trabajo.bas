@@ -242,7 +242,7 @@ Public Sub DoNavega(ByVal UserIndex As Integer, ByRef Barco As t_ObjData, ByVal 
             .invent.EquippedShipObjIndex = .invent.Object(Slot).ObjIndex
             .invent.EquippedShipSlot = Slot
             If .flags.Montado > 0 Then
-                Call DoMontar(UserIndex, ObjData(.invent.EquippedSaddleObjIndex), .invent.EquippedSaddleSlot, Forzado:=True)
+                Call DoMontar(UserIndex, ObjData(.invent.EquippedSaddleObjIndex), .invent.EquippedSaddleSlot, True)
             End If
             If .flags.Mimetizado <> e_EstadoMimetismo.Desactivado Then
                 'Msg1027= Pierdes el efecto del mimetismo.
@@ -1538,7 +1538,7 @@ DoMeditar_Err:
     Call TraceError(Err.Number, Err.Description, "Trabajo.DoMeditar", Erl)
 End Sub
 
-Public Sub DoMontar(ByVal UserIndex As Integer, ByRef Montura As t_ObjData, ByVal Slot As Integer, Optional ByVal Forzado As Boolean = False)
+Public Sub DoMontar(ByVal UserIndex As Integer, ByRef Montura As t_ObjData, ByVal Slot As Integer, ByVal Forzado As Boolean)
     On Error GoTo DoMontar_Err
     With UserList(UserIndex)
         ' Un desmonte forzado por el sistema nunca puede terminar montando al personaje

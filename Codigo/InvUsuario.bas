@@ -2609,7 +2609,7 @@ Sub UseInvItem(ByVal UserIndex As Integer, ByVal Slot As Byte, ByVal ByClick As 
                     Call WriteLocaleMsg(UserIndex, MSG_NO_PODES_CABALGAR_DENTRO_DUNGEON, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
                     Exit Sub
                 End If
-                Call DoMontar(UserIndex, obj, Slot)
+                Call DoMontar(UserIndex, obj, Slot, False)
             Case e_OBJType.otDonator
                 Select Case obj.Subtipo
                     Case 1

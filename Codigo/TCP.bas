@@ -1194,15 +1194,15 @@ Sub ClearAndSaveUser(ByVal UserIndex As Integer)
         Call ClearAttackerNpc(UserIndex)
         errordesc = "ERROR AL DESMONTAR"
         If .flags.Montado > 0 Then
-            Call DoMontar(UserIndex, ObjData(.invent.EquippedSaddleObjIndex), .invent.EquippedSaddleSlot, Forzado:=True)
+            Call DoMontar(UserIndex, ObjData(.invent.EquippedSaddleObjIndex), .invent.EquippedSaddleSlot, True)
         End If
         errordesc = "ERROR AL CANCELAR SOLICITUD DE RETO"
         If .flags.EnReto Then
             Call AbandonarReto(UserIndex, True)
         ElseIf .flags.SolicitudReto.Estado <> e_SolicitudRetoEstado.Libre Then
-            Call CancelarSolicitudReto(UserIndex, .name & " se ha desconectado.")
+            Call CancelarSolicitudReto(UserIndex, MSG_RETO_JUGADOR_DESCONECTADO, .name)
         ElseIf IsValidUserRef(.flags.AceptoReto) Then
-            Call CancelarSolicitudReto(.flags.AceptoReto.ArrayIndex, .name & " se ha desconectado.")
+            Call CancelarSolicitudReto(.flags.AceptoReto.ArrayIndex, MSG_RETO_JUGADOR_DESCONECTADO, .name)
         End If
         errordesc = "ERROR AL SACAR MIMETISMO"
         If .flags.Mimetizado > 0 Then
