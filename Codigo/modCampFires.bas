@@ -313,6 +313,43 @@ RetrieveCookedFood_Err:
     Call TraceError(Err.Number, Err.Description, "modCampfires.RetrieveCookedFood", Erl)
 End Sub
 
+Public Sub CancelCookingAtOpenCampfire(ByVal UserIndex As Integer, ByVal cancelAmount As Integer)
+    On Error GoTo CancelCookingAtOpenCampfire_Err
+    Dim campfireIndex As Integer
+    Dim readyTotal    As Integer
+    Dim pendingAmount As Integer
+    Dim rawItem       As t_Obj
+    campfireIndex = GetValidOpenCampfireIndex(UserIndex)
+    If campfireIndex = 0 Then Exit Sub
+    Call CheckCookingLost(UserIndex)
+    With UserList(UserIndex).flags
+        If .CookingTotal = 0 Then Exit Sub
+        If .CookingCampfireId <> m_Campfires(campfireIndex).campfireId Then
+            ' Msg2344=Tu comida se está cocinando en otra fogata.
+            Call WriteLocaleMsg(UserIndex, MSG_CAMPFIRE_COOKING_ELSEWHERE, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_INFO)
+            Exit Sub
+        End If
+        readyTotal = GetCookingReadyCount(UserIndex)
+        pendingAmount = .CookingTotal - readyTotal
+        If pendingAmount <= 0 Then Exit Sub
+        If cancelAmount < 1 Then Exit Sub
+        If cancelAmount < pendingAmount Then pendingAmount = cancelAmount
+        rawItem.ObjIndex = .CookingRawObj
+        rawItem.Amount = pendingAmount
+    End With
+    ' Devuelve los crudos que no llegaron a cocinarse; si no hay lugar, no se cancela
+    If Not MeterItemEnInventario(UserIndex, rawItem) Then Exit Sub
+    With UserList(UserIndex).flags
+        .CookingTotal = .CookingTotal - pendingAmount
+        If .CookingRetrieved >= .CookingTotal Then Call ClearCooking(UserIndex)
+    End With
+    Call UpdateUserInv(True, UserIndex, 0)
+    Call SendCampfireState(UserIndex, campfireIndex)
+    Exit Sub
+CancelCookingAtOpenCampfire_Err:
+    Call TraceError(Err.Number, Err.Description, "modCampfires.CancelCookingAtOpenCampfire", Erl)
+End Sub
+
 Public Sub AddCoalToOpenCampfire(ByVal UserIndex As Integer, ByVal inventorySlot As Byte, ByVal coalAmount As Integer)
     On Error GoTo AddCoalToOpenCampfire_Err
     Dim campfireIndex   As Integer

@@ -191,6 +191,8 @@ Public Function PacketID_to_string(ByVal PacketId As ClientPacketID) As String
             PacketID_to_string = "eCampfireAddCoal"
         Case ClientPacketID.eCampfireExtinguish
             PacketID_to_string = "eCampfireExtinguish"
+        Case ClientPacketID.eCampfireCancelCook
+            PacketID_to_string = "eCampfireCancelCook"
         Case ClientPacketID.eMeditate
             PacketID_to_string = "eMeditate"
         Case ClientPacketID.eResucitate

@@ -481,6 +481,8 @@ Public Function HandleIncomingData(ByVal ConnectionID As Long, ByVal Message As 
             Call HandleCampfireAddCoal(UserIndex)
         Case ClientPacketID.eCampfireExtinguish
             Call HandleCampfireExtinguish(UserIndex)
+        Case ClientPacketID.eCampfireCancelCook
+            Call HandleCampfireCancelCook(UserIndex)
         Case ClientPacketID.eMeditate
             Call HandleMeditate(UserIndex)
         Case ClientPacketID.eResucitate
@@ -4821,6 +4823,16 @@ Private Sub HandleCampfireExtinguish(ByVal UserIndex As Integer)
     Exit Sub
 HandleCampfireExtinguish_Err:
     Call TraceError(Err.Number, Err.Description, "Protocol.HandleCampfireExtinguish", Erl)
+End Sub
+
+Private Sub HandleCampfireCancelCook(ByVal UserIndex As Integer)
+    On Error GoTo HandleCampfireCancelCook_Err
+    Dim cancelAmount As Integer
+    cancelAmount = reader.ReadInt16()
+    Call CancelCookingAtOpenCampfire(UserIndex, cancelAmount)
+    Exit Sub
+HandleCampfireCancelCook_Err:
+    Call TraceError(Err.Number, Err.Description, "Protocol.HandleCampfireCancelCook", Erl)
 End Sub
 
 Private Sub HandleMeditate(ByVal UserIndex As Integer)
