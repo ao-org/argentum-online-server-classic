@@ -285,7 +285,6 @@ Public Sub CookAtOpenCampfire(ByVal UserIndex As Integer, ByVal inventorySlot As
     End With
     Call QuitarUserInvItem(UserIndex, inventorySlot, cookAmount)
     Call UpdateUserInv(False, UserIndex, inventorySlot)
-    Call SubirSkill(UserIndex, e_Skill.Supervivencia)
     Call SendCampfireState(UserIndex, campfireIndex)
     Exit Sub
 CookAtOpenCampfire_Err:
@@ -321,6 +320,7 @@ Public Sub RetrieveCookedFood(ByVal UserIndex As Integer)
         cookedItem.Amount = readyAmount
     End With
     If Not MeterItemEnInventario(UserIndex, cookedItem) Then Exit Sub
+    Call SubirSkill(UserIndex, e_Skill.Supervivencia)
     With UserList(UserIndex).flags
         .CookingRetrieved = .CookingRetrieved + readyAmount
         If .CookingRetrieved >= .CookingTotal Then Call ClearCooking(UserIndex)
