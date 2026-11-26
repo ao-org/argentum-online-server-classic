@@ -2,6 +2,7 @@ Attribute VB_Name = "modCampFires"
 Option Explicit
 
 Public Const MAX_ACTIVE_CAMPFIRES               As Integer = 500
+Public Const CAMPFIRE_MAX_IN_VISION_RANGE       As Integer = 1
 Public Const CAMPFIRE_BASE_DURATION_MS          As Long = 300000    ' 5 minutos
 Public Const CAMPFIRE_DURATION_PER_SKILL_MS     As Long = 60000     ' 1 minuto por punto de Supervivencia
 Public Const CAMPFIRE_RAIN_EXTINGUISH_MS        As Long = 5000      ' Se apaga a los 5 segundos de empezar a llover
@@ -79,6 +80,23 @@ Public Function IsUserInCampfireRange(ByVal UserIndex As Integer) As Boolean
     Exit Function
 IsUserInCampfireRange_Err:
     Call TraceError(Err.Number, Err.Description, "modCampfires.IsUserInCampfireRange", Erl)
+End Function
+
+Public Function CountCampfiresInVisionRange(ByVal Map As Integer, ByVal X As Integer, ByVal Y As Integer) As Integer
+    On Error GoTo CountCampfiresInVisionRange_Err
+    Dim campfireIndex As Integer
+    For campfireIndex = 1 To m_CampfireCount
+        If m_Campfires(campfireIndex).Map = Map Then
+            If Abs(m_Campfires(campfireIndex).X - X) <= RANGO_VISION_X And Abs(m_Campfires(campfireIndex).Y - Y) <= RANGO_VISION_Y Then
+                If MapData(m_Campfires(campfireIndex).X, m_Campfires(campfireIndex).Y, Map).ObjInfo.ObjIndex = FOGATA Then
+                    CountCampfiresInVisionRange = CountCampfiresInVisionRange + 1
+                End If
+            End If
+        End If
+    Next campfireIndex
+    Exit Function
+CountCampfiresInVisionRange_Err:
+    Call TraceError(Err.Number, Err.Description, "modCampfires.CountCampfiresInVisionRange", Erl)
 End Function
 
 Public Sub ScheduleRainExtinguishCampfires(ByVal mapIndex As Integer)
@@ -188,6 +206,7 @@ Private Sub RemoveCampfireEntry(ByVal campfireIndex As Integer)
     On Error GoTo RemoveCampfireEntry_Err
     Dim emptyCampfire As t_ActiveCampfire
     If campfireIndex < 1 Or campfireIndex > m_CampfireCount Then Exit Sub
+    Call NotifyCookingLostForCampfire(m_Campfires(campfireIndex).campfireId)
     If campfireIndex < m_CampfireCount Then m_Campfires(campfireIndex) = m_Campfires(m_CampfireCount)
     m_Campfires(m_CampfireCount) = emptyCampfire
     m_CampfireCount = m_CampfireCount - 1
@@ -498,6 +517,26 @@ Private Sub ClearCooking(ByVal UserIndex As Integer)
     Exit Sub
 ClearCooking_Err:
     Call TraceError(Err.Number, Err.Description, "modCampfires.ClearCooking", Erl)
+End Sub
+
+Private Sub NotifyCookingLostForCampfire(ByVal campfireId As Long)
+    On Error GoTo NotifyCookingLostForCampfire_Err
+    Dim cookingUserIndex As Long
+    If campfireId = 0 Then Exit Sub
+    For cookingUserIndex = 1 To LastUser
+        With UserList(cookingUserIndex)
+            If .flags.UserLogged Then
+                If .flags.CookingTotal > 0 And .flags.CookingCampfireId = campfireId Then
+                    Call ClearCooking(cookingUserIndex)
+                    ' Msg2336=Tu comida se perdió porque la fogata se apagó.
+                    Call WriteLocaleMsg(cookingUserIndex, MSG_CAMPFIRE_COOK_LOST, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+                End If
+            End If
+        End With
+    Next cookingUserIndex
+    Exit Sub
+NotifyCookingLostForCampfire_Err:
+    Call TraceError(Err.Number, Err.Description, "modCampfires.NotifyCookingLostForCampfire", Erl)
 End Sub
 
 Private Sub SendCampfireState(ByVal UserIndex As Integer, ByVal campfireIndex As Integer)

@@ -1551,4 +1551,4 @@ Public Const MSG_CAMPFIRE_RAIN_NO_FUEL      As Integer = 2342
 Public Const MSG_CAMPFIRE_NOT_LIT           As Integer = 2343
 Public Const MSG_CAMPFIRE_COOKING_ELSEWHERE As Integer = 2344
 Public Const MSG_RAW_FOOD_MUST_COOK         As Integer = 2345
-
+Public Const MSG_CAMPFIRE_TOO_CLOSE         As Integer = 2346
