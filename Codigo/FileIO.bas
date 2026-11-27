@@ -689,6 +689,7 @@ Public Sub LoadEffectOverTime()
         EffectOverTime(i).SelfHealingBonus = val(Leer.GetValue("EOT" & i, "SelfHealingBonus"))
         EffectOverTime(i).MagicHealingBonus = val(Leer.GetValue("EOT" & i, "MagicHealingBonus"))
         EffectOverTime(i).ClientEffectTypeId = val(Leer.GetValue("EOT" & i, "ClientEffectTypeId"))
+        EffectOverTime(i).DamageColor = val(Leer.GetValue("EOT" & i, "DamageColor"))
         EffectOverTime(i).PhysicalLinearBonus = val(Leer.GetValue("EOT" & i, "PhysicalLinearBonus"))
         EffectOverTime(i).PhysicalBonusPveOnly = val(Leer.GetValue("EOT" & i, "PhysicalBonusPveOnly")) <> 0
         EffectOverTime(i).DefenseBonus = val(Leer.GetValue("EOT" & i, "DefenseBonus"))

@@ -370,8 +370,10 @@ Private Sub UserDamageNpc(ByVal UserIndex As Integer, ByVal NpcIndex As Integer,
     On Error GoTo UserDamageNpc_Err
     With UserList(UserIndex)
         Dim Damage As Long, DamageBase As Long, DamageExtra As Long, Color As Long, DamageStr As String
+        Dim isDragonSlayerHit As Boolean
         If .invent.EquippedWeaponObjIndex = EspadaMataDragonesIndex And NpcList(NpcIndex).npcType = e_NPCType.Dragon Then
             ' Espada MataDragones
+            isDragonSlayerHit = True
             DamageBase = NpcList(NpcIndex).Stats.MinHp + NpcList(NpcIndex).Stats.def
             ' La pierde una vez usada
             Call QuitarObjetos(EspadaMataDragonesIndex, 1, UserIndex)
@@ -385,8 +387,12 @@ Private Sub UserDamageNpc(ByVal UserIndex As Integer, ByVal NpcIndex As Integer,
                 Call DummyTargetAttacked(NpcIndex)
             End If
         End If
-        ' Color por defecto rojo
-        Color = vbRed
+        ' Color por defecto rojo (violeta si es golpe de matadragones)
+        If isDragonSlayerHit Then
+            Color = DAMAGE_COLOR_DRAGON_SLAYER
+        Else
+            Color = vbRed
+        End If
         Dim NpcDef As Integer
         NpcDef = NpcList(NpcIndex).Stats.def + NPCs.GetDefenseBonus(NpcIndex)
         Dim ArmorPen As Integer
@@ -444,7 +450,7 @@ Private Sub UserDamageNpc(ByVal UserIndex As Integer, ByVal NpcIndex As Integer,
                     Call WriteLocaleMsg(UserIndex, MSG_HIT_AND_CRITICAL_ON_CREATURE, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_FIGHT, PonerPuntos(Damage) & "¬" & (DamageExtra))
                 End If
                 ' Color naranja
-                Color = RGB(225, 165, 0)
+                Color = DAMAGE_COLOR_CRITICAL
             End If
             ' Stab
         ElseIf PuedeApuñalar(UserIndex) Then
@@ -461,7 +467,7 @@ Private Sub UserDamageNpc(ByVal UserIndex As Integer, ByVal NpcIndex As Integer,
                     Call WriteLocaleMsg(UserIndex, MSG_HIT_AND_STABBED_CREATURE, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_FIGHT, PonerPuntos(Damage) & "¬" & PonerPuntos(DamageExtra))
                 End If
                 ' Color amarillo
-                Color = vbYellow
+                Color = DAMAGE_COLOR_BACKSTAB
             End If
             ' Sube skills en apuñalar
             Call SubirSkill(UserIndex, Apuñalar)
@@ -1256,7 +1262,7 @@ Private Sub UserDamageToUser(ByVal AtacanteIndex As Integer, ByVal VictimaIndex 
                 End If
                 Call SendData(SendTarget.ToPCAliveArea, AtacanteIndex, PrepareMessagePlayWave(SND_IMPACTO_CRITICO, UserList(AtacanteIndex).pos.x, UserList(AtacanteIndex).pos.y))
                 ' Color naranja
-                Color = RGB(225, 165, 0)
+                Color = DAMAGE_COLOR_CRITICAL
             End If
             ' Apuñalar (le afecta la defensa)
         ElseIf PuedeApuñalar(AtacanteIndex) Then
@@ -1276,7 +1282,7 @@ Private Sub UserDamageToUser(ByVal AtacanteIndex As Integer, ByVal VictimaIndex 
                 'Sonido de apuñalar
                 Call SendData(SendTarget.ToPCAliveArea, AtacanteIndex, PrepareMessagePlayWave(SND_IMPACTO_APU, UserList(AtacanteIndex).pos.x, UserList(AtacanteIndex).pos.y))
                 ' Color amarillo
-                Color = vbYellow
+                Color = DAMAGE_COLOR_BACKSTAB
                 ' Efecto en la víctima
                 UserList(VictimaIndex).Counters.timeFx = 3
                 Call SendData(SendTarget.ToPCAliveArea, VictimaIndex, PrepareMessageCreateFX(UserList(VictimaIndex).Char.charindex, 89, 0, UserList(VictimaIndex).pos.x, UserList( _

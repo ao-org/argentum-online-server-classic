@@ -290,11 +290,24 @@ Public Sub PerformAction()
         End If
         TickHP = TickHP * SecondTargetModifier
         If IsValidRef(Source) Then
-            Call NPCs.DoDamageOrHeal(DotInfo.TargetRef.ArrayIndex, Source.ArrayIndex, Source.RefType, TickHP, e_dot, DotInfo.EotId)
+            Call NPCs.DoDamageOrHeal(DotInfo.TargetRef.ArrayIndex, Source.ArrayIndex, Source.RefType, TickHP, e_dot, DotInfo.EotId, GetDotDamageColor(DotInfo.EotId))
         Else
-            Call NPCs.DoDamageOrHeal(DotInfo.TargetRef.ArrayIndex, 0, e_ReferenceType.eNone, TickHP, e_dot, DotInfo.EotId)
+            Call NPCs.DoDamageOrHeal(DotInfo.TargetRef.ArrayIndex, 0, e_ReferenceType.eNone, TickHP, e_dot, DotInfo.EotId, GetDotDamageColor(DotInfo.EotId))
         End If
         If TickEffect > 0 Then Call SendData(SendTarget.ToNPCAliveArea, DotInfo.TargetRef.ArrayIndex, PrepareMessageCreateFX(NpcList( _
            DotInfo.TargetRef.ArrayIndex).Char.charindex, TickEffect, 0, NpcList(DotInfo.TargetRef.ArrayIndex).pos.x, NpcList(DotInfo.TargetRef.ArrayIndex).pos.y))
     End If
 End Sub
+
+Private Function GetDotDamageColor(ByVal EffectId As Integer) As Long
+    On Error GoTo GetDotDamageColor_Err
+    If EffectOverTime(EffectId).DamageColor > 0 Then
+        GetDotDamageColor = EffectOverTime(EffectId).DamageColor
+    Else
+        GetDotDamageColor = vbRed
+    End If
+    Exit Function
+GetDotDamageColor_Err:
+    GetDotDamageColor = vbRed
+    Call TraceError(Err.Number, Err.Description, "UpdateHpOverTime.GetDotDamageColor", Erl)
+End Function
