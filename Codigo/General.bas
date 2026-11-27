@@ -1243,6 +1243,8 @@ Public Sub EfectoVeneno(ByVal UserIndex As Integer)
             ' El veneno saca un porcentaje de vida random.
             Damage = RandomNumber(3, 5)
             Damage = (1 + Damage * .Stats.MaxHp \ 100) ' Redondea para arriba
+            ' Floating damage text in poison color
+            Call SendData(SendTarget.ToIndex, UserIndex, PrepareMessageTextOverChar(PonerPuntos(Damage), .Char.charindex, DAMAGE_COLOR_POISON))
             If .ChatCombate = 1 Then
                 ' "El veneno te ha causado ¬1 puntos de daño."
                 Call WriteLocaleMsg(UserIndex, MSG_POISON_DEALT_DAMAGE, e_TextChannel.TEXTCHANNEL_COMBAT, e_FontTypeNames.FONTTYPE_VENENO, PonerPuntos(Damage))

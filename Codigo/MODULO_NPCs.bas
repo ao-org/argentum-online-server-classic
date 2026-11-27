@@ -2026,8 +2026,12 @@ Public Function DoDamageOrHeal(ByVal NpcIndex As Integer, _
                                ByVal DamageSourceIndex As Integer, _
                                Optional ByVal DamageColor As Long = vbRed) As e_DamageResult
     On Error GoTo DoDamageOrHeal_Err
-    Dim DamageStr As String
-    Dim Color     As Long
+    Dim DamageStr     As String
+    Dim Color         As Long
+    Dim deathMap      As Integer
+    Dim deathX        As Integer
+    Dim deathY        As Integer
+    Dim showDeathText As Boolean
     If amount > 0 Then
         Color = vbGreen
     Else
@@ -2065,6 +2069,11 @@ Public Function DoDamageOrHeal(ByVal NpcIndex As Integer, _
         End If
         If NPCs.ModifyHealth(NpcIndex, amount) Then
             DoDamageOrHeal = eDead
+            ' Saved now because the NPC is removed below
+            deathMap = .pos.Map
+            deathX = .pos.X
+            deathY = .pos.Y
+            showDeathText = (.npcType <> DummyTarget)
             CustomScenarios.NpcDie (NpcIndex)
             If SourceType = eUser Then
                 Call CustomScenarios.PlayerKillNpc(.pos.Map, NpcIndex, SourceIndex, DamageSourceType, DamageSourceIndex)
@@ -2077,6 +2086,10 @@ Public Function DoDamageOrHeal(ByVal NpcIndex As Integer, _
                 Else
                     Call MuereNpc(NpcIndex, -1)
                 End If
+            End If
+            ' The char is already removed here, so the text goes over the empty tile
+            If showDeathText Then
+                Call modSendData.SendToAreaByPos(deathMap, deathX, deathY, PrepareMessageTextOverTile(DamageStr, deathX, deathY, Color))
             End If
             Exit Function
         End If
