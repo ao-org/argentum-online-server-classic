@@ -1515,6 +1515,13 @@ Public Const SND_NIVEL           As Integer = 554
 Public Const SND_IMPACTO         As Byte = 10
 Public Const SND_IMPACTO_APU     As Integer = 2187
 Public Const SND_IMPACTO_CRITICO As Integer = 2186
+
+' Floating damage colors (VB color format: &HBBGGRR)
+Public Const DAMAGE_COLOR_POISON        As Long = &H8C00&
+Public Const DAMAGE_COLOR_CRITICAL      As Long = &H8CFF&
+Public Const DAMAGE_COLOR_BACKSTAB      As Long = vbYellow
+Public Const DAMAGE_COLOR_DRAGON_SLAYER As Long = &HFF46B4
+
 Public Const SND_IMPACTO2        As Byte = 12
 Public Const SND_FLECHA_IMPACTO  As Byte = 229
 Public Const SND_FLECHA_FALLO    As Byte = 228
@@ -1927,6 +1934,7 @@ Public Type t_EffectOverTime
     PhysicalBonusPveOnly As Boolean
     DefenseBonus As Integer
     ClientEffectTypeId As Integer
+    DamageColor As Long
     Area As Integer
     Aura As String
     ApplyEffectId As Integer
