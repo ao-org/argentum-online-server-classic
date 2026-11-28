@@ -1541,3 +1541,14 @@ Public Const MSG_RETO_JUGADOR_ABANDONO              As Integer = 2333
 Public Const MSG_RETO_CUENTA_REGRESIVA              As Integer = 2334
 Public Const MSG_APUESTA_MAXIMA_MONEDAS_ORO         As Integer = 2335
 
+Public Const MSG_CAMPFIRE_COOK_LOST         As Integer = 2336
+Public Const MSG_CAMPFIRE_NOT_COOKABLE      As Integer = 2337
+Public Const MSG_CAMPFIRE_ALREADY_COOKING   As Integer = 2338
+Public Const MSG_CAMPFIRE_NOTHING_READY     As Integer = 2339
+Public Const MSG_CAMPFIRE_EXTINGUISHED      As Integer = 2340
+Public Const MSG_CAMPFIRE_FUEL_MAX          As Integer = 2341
+Public Const MSG_CAMPFIRE_RAIN_NO_FUEL      As Integer = 2342
+Public Const MSG_CAMPFIRE_NOT_LIT           As Integer = 2343
+Public Const MSG_CAMPFIRE_COOKING_ELSEWHERE As Integer = 2344
+Public Const MSG_RAW_FOOD_MUST_COOK         As Integer = 2345
+Public Const MSG_CAMPFIRE_TOO_CLOSE         As Integer = 2346

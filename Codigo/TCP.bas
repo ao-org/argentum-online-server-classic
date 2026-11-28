@@ -926,6 +926,15 @@ Sub ResetUserFlags(ByVal UserIndex As Integer)
         .Descuento = vbNullString
         .Descansar = False
         .CampfireWarmthNotified = False
+        .CampfireWarmthNotified = False
+        .OpenCampfireId = 0
+        .CookingCampfireId = 0
+        .CookingRawObj = 0
+        .CookingCookedObj = 0
+        .CookingTotal = 0
+        .CookingRetrieved = 0
+        .CookingStartTick = 0
+        .CookingUnitMs = 0
         .Navegando = 0
         .Oculto = 0
         .Envenenado = 0

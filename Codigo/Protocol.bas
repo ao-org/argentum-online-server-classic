@@ -473,6 +473,16 @@ Public Function HandleIncomingData(ByVal ConnectionID As Long, ByVal Message As 
             Call HandleTrainList(UserIndex)
         Case ClientPacketID.eRest
             Call HandleRest(UserIndex)
+        Case ClientPacketID.eCampfireCook
+            Call HandleCampfireCook(UserIndex)
+        Case ClientPacketID.eCampfireRetrieve
+            Call HandleCampfireRetrieve(UserIndex)
+        Case ClientPacketID.eCampfireAddCoal
+            Call HandleCampfireAddCoal(UserIndex)
+        Case ClientPacketID.eCampfireExtinguish
+            Call HandleCampfireExtinguish(UserIndex)
+        Case ClientPacketID.eCampfireCancelCook
+            Call HandleCampfireCancelCook(UserIndex)
         Case ClientPacketID.eMeditate
             Call HandleMeditate(UserIndex)
         Case ClientPacketID.eResucitate
@@ -2729,6 +2739,12 @@ Private Sub HandleDoubleClick(ByVal UserIndex As Integer)
     x = reader.ReadInt8()
     y = reader.ReadInt8()
     ' World interactions are handled on left click. Double click is consumed only to avoid duplicate execution.
+    ' Excepcion: interactuar con una fogata encendida abre su panel.
+    If InMapBounds(UserList(UserIndex).pos.map, x, y) Then
+        If MapData(x, y, UserList(UserIndex).pos.map).ObjInfo.ObjIndex = FOGATA Then
+            Call OpenCampfirePanel(UserIndex, x, y)
+        End If
+    End If
     Exit Sub
 HandleDoubleClick_Err:
     Call TraceError(Err.Number, Err.Description, "Protocol.HandleDoubleClick", Erl)
@@ -4767,6 +4783,56 @@ Private Sub HandleRest(ByVal UserIndex As Integer)
     Exit Sub
 HandleRest_Err:
     Call TraceError(Err.Number, Err.Description, "Protocol.HandleRest", Erl)
+End Sub
+
+Private Sub HandleCampfireCook(ByVal UserIndex As Integer)
+    On Error GoTo HandleCampfireCook_Err
+    Dim inventorySlot As Byte
+    Dim cookAmount    As Integer
+    inventorySlot = reader.ReadInt8()
+    cookAmount = reader.ReadInt16()
+    Call CookAtOpenCampfire(UserIndex, inventorySlot, cookAmount)
+    Exit Sub
+HandleCampfireCook_Err:
+    Call TraceError(Err.Number, Err.Description, "Protocol.HandleCampfireCook", Erl)
+End Sub
+
+Private Sub HandleCampfireRetrieve(ByVal UserIndex As Integer)
+    On Error GoTo HandleCampfireRetrieve_Err
+    Call RetrieveCookedFood(UserIndex)
+    Exit Sub
+HandleCampfireRetrieve_Err:
+    Call TraceError(Err.Number, Err.Description, "Protocol.HandleCampfireRetrieve", Erl)
+End Sub
+
+Private Sub HandleCampfireAddCoal(ByVal UserIndex As Integer)
+    On Error GoTo HandleCampfireAddCoal_Err
+    Dim inventorySlot As Byte
+    Dim coalAmount    As Integer
+    inventorySlot = reader.ReadInt8()
+    coalAmount = reader.ReadInt16()
+    Call AddCoalToOpenCampfire(UserIndex, inventorySlot, coalAmount)
+    Exit Sub
+HandleCampfireAddCoal_Err:
+    Call TraceError(Err.Number, Err.Description, "Protocol.HandleCampfireAddCoal", Erl)
+End Sub
+
+Private Sub HandleCampfireExtinguish(ByVal UserIndex As Integer)
+    On Error GoTo HandleCampfireExtinguish_Err
+    Call ExtinguishOpenCampfire(UserIndex)
+    Exit Sub
+HandleCampfireExtinguish_Err:
+    Call TraceError(Err.Number, Err.Description, "Protocol.HandleCampfireExtinguish", Erl)
+End Sub
+
+Private Sub HandleCampfireCancelCook(ByVal UserIndex As Integer)
+    On Error GoTo HandleCampfireCancelCook_Err
+    Dim cancelAmount As Integer
+    cancelAmount = reader.ReadInt16()
+    Call CancelCookingAtOpenCampfire(UserIndex, cancelAmount)
+    Exit Sub
+HandleCampfireCancelCook_Err:
+    Call TraceError(Err.Number, Err.Description, "Protocol.HandleCampfireCancelCook", Erl)
 End Sub
 
 Private Sub HandleMeditate(ByVal UserIndex As Integer)

@@ -848,6 +848,11 @@ Sub HandleCampfireTwigAction(ByVal Map As Integer, ByVal x As Integer, ByVal y A
             Call WriteLocaleMsg(UserIndex, MSG_DEBES_ALEJARTE_POCO_OTRA_FOGATA, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
             Exit Sub
         End If
+        If CountCampfiresInVisionRange(Map, X, Y) >= CAMPFIRE_MAX_IN_VISION_RANGE Then
+            ' Msg2346=Ya hay una fogata encendida cerca. Usá esa.
+            Call WriteLocaleMsg(UserIndex, MSG_CAMPFIRE_TOO_CLOSE, e_TextChannel.TEXTCHANNEL_SYSTEM, e_FontTypeNames.FONTTYPE_New_Naranja)
+            Exit Sub
+        End If
         Select Case .Stats.UserSkills(Supervivencia)
             Case Is < 6
                 Suerte = 4
