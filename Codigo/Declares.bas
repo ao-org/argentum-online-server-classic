@@ -1178,7 +1178,22 @@ Public Enum e_NpcInfoMask
     Paralized = 64
     Inmovilized = 128
     Fighting = 256
+    Bruised = 512
+    BadlyWounded = 1024
+    Dying = 2048
 End Enum
+
+Public Const NPC_INFO_SKILL_EXACT_HP          As Integer = 75
+Public Const NPC_INFO_SKILL_PERCENT_HP        As Integer = 50
+Public Const NPC_INFO_SKILL_HP_STATUS         As Integer = 25
+Public Const NPC_INFO_SKILL_TIMERS            As Integer = 100
+Public Const NPC_HP_DYING_RATIO               As Single = 0.05
+Public Const NPC_HP_ALMOST_DEAD_RATIO         As Single = 0.1
+Public Const NPC_HP_SERIOUSLY_WOUNDED_RATIO   As Single = 0.25
+Public Const NPC_HP_BADLY_WOUNDED_RATIO       As Single = 0.4
+Public Const NPC_HP_WOUNDED_RATIO             As Single = 0.6
+Public Const NPC_HP_LIGHTLY_WOUNDED_RATIO     As Single = 0.8
+Public Const NPC_COUNTER_TICKS_PER_SECOND     As Single = 6.5
 
 Public Enum e_UsersInfoMask
     Newbie = 1

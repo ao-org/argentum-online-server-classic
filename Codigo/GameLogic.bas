@@ -2047,20 +2047,26 @@ Public Function PrepareStatusMsgsForNpcs(ByVal TargetNpcIndex As Integer, ByVal 
     UserSurvivalSkill = UserList(SourceUserIndex).Stats.UserSkills(e_Skill.Supervivencia)
     With NpcList(TargetNpcIndex)
         Select Case UserSurvivalSkill
-            Case Is >= 75
+            Case Is >= NPC_INFO_SKILL_EXACT_HP
                 extraStrings = extraStrings & .Stats.MinHp & "/" & .Stats.MaxHp & "-"
-            Case Is >= 50
+            Case Is >= NPC_INFO_SKILL_PERCENT_HP
                 extraStrings = extraStrings & Round((.Stats.MinHp / .Stats.MaxHp) * 100#, 0) & "%" & "-"
-            Case Is >= 25
+            Case Is >= NPC_INFO_SKILL_HP_STATUS
                 Select Case .Stats.MinHp
-                    Case Is < (.Stats.MaxHp * 0.1)
+                    Case Is < (.Stats.MaxHp * NPC_HP_DYING_RATIO)
+                        Call SetMask(NpcStatusMask, e_NpcInfoMask.Dying)
+                    Case Is < (.Stats.MaxHp * NPC_HP_ALMOST_DEAD_RATIO)
                         Call SetMask(NpcStatusMask, e_NpcInfoMask.AlmostDead)
-                    Case Is < (.Stats.MaxHp * 0.2)
+                    Case Is < (.Stats.MaxHp * NPC_HP_SERIOUSLY_WOUNDED_RATIO)
                         Call SetMask(NpcStatusMask, e_NpcInfoMask.SeriouslyWounded)
-                    Case Is < (.Stats.MaxHp * 0.5)
+                    Case Is < (.Stats.MaxHp * NPC_HP_BADLY_WOUNDED_RATIO)
+                        Call SetMask(NpcStatusMask, e_NpcInfoMask.BadlyWounded)
+                    Case Is < (.Stats.MaxHp * NPC_HP_WOUNDED_RATIO)
                         Call SetMask(NpcStatusMask, e_NpcInfoMask.Wounded)
-                    Case Is < (.Stats.MaxHp * 0.7)
+                    Case Is < (.Stats.MaxHp * NPC_HP_LIGHTLY_WOUNDED_RATIO)
                         Call SetMask(NpcStatusMask, e_NpcInfoMask.LightlyWounded)
+                    Case Is < .Stats.MaxHp
+                        Call SetMask(NpcStatusMask, e_NpcInfoMask.Bruised)
                     Case Else
                         Call SetMask(NpcStatusMask, e_NpcInfoMask.Intact)
                 End Select
@@ -2077,8 +2083,8 @@ Public Function PrepareStatusMsgsForNpcs(ByVal TargetNpcIndex As Integer, ByVal 
             Call SetMask(NpcStatusMask, e_NpcInfoMask.Poisoned)
         End If
         If .flags.Paralizado = 1 Then
-            If UserSurvivalSkill >= 100 Then
-                extraStrings = extraStrings & CLng(.Contadores.Paralisis / 6.5)
+            If UserSurvivalSkill >= NPC_INFO_SKILL_TIMERS Then
+                extraStrings = extraStrings & CLng(.Contadores.Paralisis / NPC_COUNTER_TICKS_PER_SECOND)
             End If
             Call SetMask(NpcStatusMask, e_NpcInfoMask.Paralized)
             extraStrings = extraStrings & "-"
@@ -2086,8 +2092,8 @@ Public Function PrepareStatusMsgsForNpcs(ByVal TargetNpcIndex As Integer, ByVal 
             extraStrings = extraStrings & "-"
         End If
         If .flags.Inmovilizado = 1 Then
-            If UserSurvivalSkill >= 100 Then
-                extraStrings = extraStrings & CLng(.Contadores.Inmovilizado / 6.5)
+            If UserSurvivalSkill >= NPC_INFO_SKILL_TIMERS Then
+                extraStrings = extraStrings & CLng(.Contadores.Inmovilizado / NPC_COUNTER_TICKS_PER_SECOND)
             End If
             Call SetMask(NpcStatusMask, e_NpcInfoMask.Inmovilized)
             extraStrings = extraStrings & "-"
@@ -2110,7 +2116,7 @@ Public Function PrepareStatusMsgsForNpcs(ByVal TargetNpcIndex As Integer, ByVal 
     End With
     Exit Function
 PrepareStatusMsgsForNpcs_Err:
-    Call TraceError(Err.Number, Err.Description, "Extra.PrepareStatusMsgsForNpcs", Erl)
+    Call TraceError(Err.Number, Err.Description, "GameLogic.PrepareStatusMsgsForNpcs", Erl)
 End Function
 
 Public Function ClampChance(ByVal v As Single) As Integer
