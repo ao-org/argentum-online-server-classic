@@ -1429,6 +1429,11 @@ Public Enum e_Heading
     WEST = 4
 End Enum
 
+Public Const TAIL_SWEEP_LENGTH As Integer = 2
+Public Const DAMAGE_PERCENT_FULL As Integer = 100
+Public Const TAIL_SWEEP_FIRST_TILE_PERCENT As Integer = 80
+Public Const TAIL_SWEEP_SECOND_TILE_PERCENT As Integer = 50
+
 Public Enum e_Block
     NORTH = &H1
     EAST = &H2
@@ -3436,6 +3441,7 @@ Public Type t_NpcInfoCache
     Distancia As Integer
     GiveEXPClan As Long
     Veneno As Integer
+    AtaqueCola As Integer
     Domable As Integer
     AttackableByEveryone As Integer
     MapEntryPrice As Long
@@ -3585,6 +3591,7 @@ Public Type t_Npc
     SoundOpen As Integer
     SoundClose As Integer
     Veneno As Byte
+    AtaqueCola As Byte
     pos As t_WorldPos 'Posicion
     Orig As t_WorldPos
     Movement As e_TipoAI

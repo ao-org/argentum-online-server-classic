@@ -537,7 +537,15 @@ End Function
 
 Private Function NpcDamage(ByVal NpcIndex As Integer, ByVal UserIndex As Integer) As Long
     On Error GoTo NpcDamage_Err
-    NpcDamage = -1
+    NpcDamage = NpcDamageScaled(NpcIndex, UserIndex, DAMAGE_PERCENT_FULL)
+    Exit Function
+NpcDamage_Err:
+    Call TraceError(Err.Number, Err.Description, "SistemaCombate.NpcDamage", Erl)
+End Function
+
+Private Function NpcDamageScaled(ByVal NpcIndex As Integer, ByVal UserIndex As Integer, ByVal DamagePercent As Integer) As Long
+    On Error GoTo NpcDamageScaled_Err
+    NpcDamageScaled = -1
     Dim Damage   As Integer, Lugar As Integer, absorbido As Integer
     Dim defbarco As Integer
     Dim obj      As t_ObjData
@@ -589,6 +597,7 @@ Private Function NpcDamage(ByVal NpcIndex As Integer, ByVal UserIndex As Integer
     End If
     ' ===========================================
     
+    Damage = CInt(CLng(Damage) * DamagePercent \ DAMAGE_PERCENT_FULL)
     If Damage < 0 Then Damage = 0
     If UserList(UserIndex).ChatCombate = 1 Then
         Call WriteNPCHitUser(UserIndex, Lugar, Damage)
@@ -602,10 +611,10 @@ Private Function NpcDamage(ByVal NpcIndex As Integer, ByVal UserIndex As Integer
             Call SendData(SendTarget.ToPCAliveArea, UserIndex, PrepareMessageMeditateToggle(UserList(UserIndex).Char.charindex, 0))
         End If
     End If
-    NpcDamage = Damage
+    NpcDamageScaled = Damage
     Exit Function
-NpcDamage_Err:
-    Call TraceError(Err.Number, Err.Description, "SistemaCombate.NpcDamage", Erl)
+NpcDamageScaled_Err:
+    Call TraceError(Err.Number, Err.Description, "SistemaCombate.NpcDamageScaled", Erl)
 End Function
 
 Public Function NpcDoDamageToUser(ByVal attackerIndex As Integer, _
@@ -665,6 +674,9 @@ Public Function NpcAtacaUser(ByVal NpcIndex As Integer, ByVal UserIndex As Integ
     If NpcList(NpcIndex).Char.WeaponAnim > 0 Then
         Call SendData(SendTarget.ToNPCAliveArea, NpcIndex, PrepareMessageArmaMov(NpcList(NpcIndex).Char.charindex, 0))
     End If
+    If NpcList(NpcIndex).AtaqueCola > 0 Then
+        Call NpcTailSweep(NpcIndex, UserIndex, Heading)
+    End If
     '-----Tal vez suba los skills------
     Call SubirSkill(UserIndex, Tacticas)
     'Controla el nivel del usuario
@@ -672,6 +684,105 @@ Public Function NpcAtacaUser(ByVal NpcIndex As Integer, ByVal UserIndex As Integ
     Exit Function
 NpcAtacaUser_Err:
     Call TraceError(Err.Number, Err.Description & " Linea---> " & Erl, "SistemaCombate.NpcAtacaUser", Erl)
+End Function
+
+Private Sub NpcTailSweep(ByVal NpcIndex As Integer, ByVal TargetUserIndex As Integer, ByVal Heading As e_Heading)
+    On Error GoTo NpcTailSweep_Err
+
+    Dim directionX   As Integer
+    Dim directionY   As Integer
+    Dim originX      As Integer
+    Dim originY      As Integer
+    Dim MapIndex     As Integer
+    Dim TileDistance As Integer
+
+    Select Case Heading
+        Case e_Heading.NORTH
+            directionY = -1
+        Case e_Heading.SOUTH
+            directionY = 1
+        Case e_Heading.EAST
+            directionX = 1
+        Case e_Heading.WEST
+            directionX = -1
+        Case Else
+            Exit Sub
+    End Select
+
+    With UserList(TargetUserIndex).pos
+        MapIndex = .Map
+        originX = .x
+        originY = .y
+    End With
+
+    For TileDistance = 1 To TAIL_SWEEP_LENGTH
+        Call NpcTailSweepHitTile(NpcIndex, MapIndex, originX + directionX * TileDistance, originY + directionY * TileDistance, GetTailSweepDamagePercent(TileDistance))
+    Next TileDistance
+    Exit Sub
+
+NpcTailSweep_Err:
+    Call TraceError(Err.Number, Err.Description, "SistemaCombate.NpcTailSweep", Erl)
+End Sub
+
+Private Sub NpcTailSweepHitTile(ByVal NpcIndex As Integer, ByVal MapIndex As Integer, ByVal TileX As Integer, ByVal TileY As Integer, ByVal DamagePercent As Integer)
+    On Error GoTo NpcTailSweepHitTile_Err
+
+    Dim victimIndex As Integer
+
+    If TileX < XMinMapSize Or TileX > XMaxMapSize Then Exit Sub
+    If TileY < YMinMapSize Or TileY > YMaxMapSize Then Exit Sub
+
+    victimIndex = MapData(TileX, TileY, MapIndex).UserIndex
+    If victimIndex <= 0 Then Exit Sub
+    If Not CanTailSweepHitUser(victimIndex) Then Exit Sub
+
+    UserList(victimIndex).Counters.EnCombate = IntervaloEnCombate
+    Call CancelExit(victimIndex)
+
+    If NpcImpacto(NpcIndex, victimIndex) Then
+        Call NpcDamageScaled(NpcIndex, victimIndex, DamagePercent)
+        If NpcList(NpcIndex).Veneno > 0 Then
+            Call NpcEnvenenarUser(victimIndex, NpcList(NpcIndex).Veneno)
+        End If
+    End If
+    Exit Sub
+
+NpcTailSweepHitTile_Err:
+    Call TraceError(Err.Number, Err.Description, "SistemaCombate.NpcTailSweepHitTile", Erl)
+End Sub
+
+Private Function CanTailSweepHitUser(ByVal UserIndex As Integer) As Boolean
+    On Error GoTo CanTailSweepHitUser_Err
+
+    With UserList(UserIndex)
+        If .flags.AdminInvisible = 1 Then Exit Function
+        If .flags.Muerto = 1 Then Exit Function
+        If (Not .flags.Privilegios And e_PlayerType.User) <> 0 And Not .flags.AdminPerseguible Then Exit Function
+    End With
+
+    CanTailSweepHitUser = True
+    Exit Function
+
+CanTailSweepHitUser_Err:
+    Call TraceError(Err.Number, Err.Description, "SistemaCombate.CanTailSweepHitUser", Erl)
+End Function
+
+
+Private Function GetTailSweepDamagePercent(ByVal TileDistance As Integer) As Integer
+    On Error GoTo GetTailSweepDamagePercent_Err
+
+    Select Case TileDistance
+        Case 1
+            GetTailSweepDamagePercent = TAIL_SWEEP_FIRST_TILE_PERCENT
+        Case 2
+            GetTailSweepDamagePercent = TAIL_SWEEP_SECOND_TILE_PERCENT
+        Case Else
+            GetTailSweepDamagePercent = 0
+    End Select
+    Exit Function
+
+GetTailSweepDamagePercent_Err:
+    Call TraceError(Err.Number, Err.Description, "SistemaCombate.GetTailSweepDamagePercent", Erl)
 End Function
 
 Private Function NpcImpactoNpc(ByVal Atacante As Integer, ByVal Victima As Integer) As Boolean

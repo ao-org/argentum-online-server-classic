@@ -1074,6 +1074,7 @@ Private Sub LoadNpcInfoIntoCache(ByVal NpcNumber As Integer)
         .Distancia = Val(LeerNPCs.GetValue(SectionName, "Distancia"))
         .GiveEXPClan = Val(LeerNPCs.GetValue(SectionName, "GiveEXPClan"))
         .Veneno = Val(LeerNPCs.GetValue(SectionName, "Veneno"))
+        .AtaqueCola = val(LeerNPCs.GetValue(SectionName, "AtaqueCola"))
         .Domable = Val(LeerNPCs.GetValue(SectionName, "Domable"))
         .AttackableByEveryone = Val(LeerNPCs.GetValue(SectionName, "AttackableByEveryone", 0))
         .MapEntryPrice = Val(LeerNPCs.GetValue(SectionName, "MapEntryPrice", 0))
@@ -1460,6 +1461,7 @@ Private Sub InitializeNpcFromInfo(ByVal NpcIndex As Integer, _
         .GiveEXPClan = Info.GiveEXPClan
         .flags.ExpCount = .GiveEXP
         .Veneno = Info.Veneno
+        .AtaqueCola = Info.AtaqueCola
         .flags.Domable = Info.Domable
         .flags.AttackableByEveryone = Info.AttackableByEveryone
         .flags.MapEntryPrice = Info.MapEntryPrice
